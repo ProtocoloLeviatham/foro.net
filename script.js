@@ -1,7 +1,9 @@
 // **IMPORTANTE:** Para el desarrollo de un foro cliente, las keys deben estar
 // en el código. No es posible "esconderlas" de forma segura en el cliente.
 // La seguridad se garantiza con las REGLAS DE SEGURIDAD DE FIREBASE.
-
+// --- CLAVE ADMINISTRATIVA ---
+const ADMIN_KEY = "Leviathan2025AdminKey"; // CAMBIA ESTA CLAVE POR UNA MUCHO MÁS LARGA Y COMPLEJA
+// ----------------------------
 const firebaseConfig = {
     apiKey: "AIzaSyBZCPk8qp39BoQ99qLfoQlT6pabnqaqinY",
     authDomain: "foro-513fa.firebaseapp.com",
@@ -137,4 +139,5 @@ function displayThread(threadId, threadData) {
     // Aquí iría el código para cargar las respuestas y el formulario de respuesta...
     // Ejemplo de cómo cargar respuestas:
     // db.collection("threads").doc(threadId).collection("replies").orderBy('timestamp', 'asc').get().then(...)
+
 }
