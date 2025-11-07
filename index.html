@@ -3,35 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Anon-Net :: Interfaz Segura</title>
+    <title>Leviathan Protocol :: Acceso Anónimo</title>
     <link rel="stylesheet" href="style.css">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&family=Press+Start+2P&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div id="matrix-overlay"></div> <header>
-        <h1>[ ANON-NET ]</h1>
-        <p class="tagline">// Sesión de Intercambio Cifrado. Sin Rastro. Sin Login.</p>
+    <div id="static-overlay"></div>
+    <canvas id="background-canvas"></canvas>
+
+    <header>
+        <pre id="leviathan-logo" class="glitch-text" data-text="[ Iniciando Codificación ]">
+                  .'.. /|
+                 / |  //
+               _.'./.'./
+              ( LEVIATHAN )
+               \_`\_`\_/
+                 / / /
+                | | |
+                \_/
+        </pre>
+        <p class="tagline glitch-text" data-text="[ Status: Online ]">[ Status: Online ]</p>
+        <p class="tagline glitch-text" data-text="[ Imdustrias Lazarus ]">[ Imdustrias Lazarus ]</p>
+        <p class="tagline glitch-text" data-text="[ KaliHunter32 ]">[ KaliHunter32 ]</p>
+        <h1>ACCESO :: PROTOCOLO LEVIATHAN</h1>
+        <p class="subtitle">// Una red de intercambio de información completamente anónima.</p>
     </header>
 
     <main>
-        <section id="post-creator" class="terminal-box glow">
-            <h2>> Nueva Transmisión</h2>
+        <section id="post-creator" class="terminal-box">
+            <h2>> [ Nueva Transmisión Anónima ]</h2>
             <form id="post-form">
-                <textarea id="post-content" placeholder="Escriba su mensaje anónimo aquí..." required rows="4"></textarea>
-                <button type="submit" class="hack-button">ENVIAR ENCRIPTADO</button>
+                <textarea id="post-content" placeholder="Ingrese aquí su mensaje cifrado (máx. 500 bytes)..." required rows="6"></textarea>
+                <div class="form-controls">
+                    <span id="char-count" class="char-counter">0 / 500</span>
+                    <button type="submit" class="hack-button">ENVIAR SEGURO</button>
+                </div>
             </form>
         </section>
 
         <section id="forum-posts">
-            <h2>> Archivos Recibidos</h2>
+            <h2 class="section-title">> [ Registros de Data ] <span id="total-posts-count">(0)</span></h2>
             <div id="posts-container">
                 </div>
+            <div id="pagination" class="pagination-controls">
+                <button id="prev-page" class="hack-button" disabled>&lt; Anteriores</button>
+                <span id="page-info">Página 1</span>
+                <button id="next-page" class="hack-button">Siguientes &gt;</button>
+            </div>
         </section>
     </main>
 
     <footer>
-        <p>&copy; 2024. Protocolo A.N. V1.0 - Conexión Segura</p>
+        <p>&copy; 2024. Leviathan Protocol v2.0 // Todos los derechos reservados.</p>
     </footer>
 
-    <script src="app.js"></script> 
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+    <script src="app.js"></script>
 </body>
 </html>
