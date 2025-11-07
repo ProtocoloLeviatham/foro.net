@@ -3,458 +3,515 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leviathan | AnonBoard - Acceso Cifrado</title>
+    <title>[ LEVIATHAM ] - Foro Anónimo</title>
     <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Fuente Monospace para estilo Terminal -->
+    <!-- Carga de Lucide Icons -->
+    <script type="module" src="https://unpkg.com/lucide-react@latest/dist/umd/lucide.js"></script>
+    <script nomodule src="https://unpkg.com/lucide-react@latest/dist/umd/lucide.min.js"></script>
+
     <style>
-        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
-        :root {
-            --neon-green: #00ff00;
-            --dark-bg: #0d1117;
-        }
-
+        /* Fuente monoespaciada para la estética hacker */
         body {
-            font-family: 'Roboto Mono', monospace;
-            background-color: var(--dark-bg);
-            color: var(--neon-green);
-            /* Animación de fondo: Simula ruido de terminal */
-            background-image: linear-gradient(rgba(0, 0, 0, 0.4) 1px, transparent 1px),
-                              linear-gradient(90deg, rgba(0, 0, 0, 0.4) 1px, transparent 1px);
-            background-size: 5px 5px;
-            animation: flicker 0.1s infinite alternate;
-        }
-
-        @keyframes flicker {
-            0% { opacity: 0.99; }
-            100% { opacity: 1; }
-        }
-
-        /* Estilo de la interfaz principal: efecto de monitor CRT */
-        .crt-container {
-            border: 2px solid var(--neon-green);
-            box-shadow: 0 0 10px var(--neon-green), inset 0 0 5px var(--neon-green);
-            background-color: rgba(13, 17, 23, 0.8);
-            backdrop-filter: blur(2px);
-        }
-
-        /* Estilo para el texto que simula un cursor */
-        .cursor-blink {
-            animation: blink 1s step-start infinite;
-        }
-
-        @keyframes blink {
-            50% { opacity: 0; }
-        }
-
-        /* Estilo de entrada y botón */
-        .terminal-input, .terminal-button {
-            border: 1px solid var(--neon-green);
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
             background-color: #000;
-            color: var(--neon-green);
-            box-shadow: 0 0 3px var(--neon-green);
-            transition: box-shadow 0.2s;
+            color: #0F0; /* Verde brillante */
+            overflow-x: hidden;
         }
 
-        .terminal-button:hover {
-            box-shadow: 0 0 8px var(--neon-green);
-            background-color: rgba(0, 255, 0, 0.1);
-        }
-
-        /* Títulos de las tarjetas de hilo */
-        .thread-title-glow {
-            text-shadow: 0 0 5px var(--neon-green);
-        }
-
-        /* Animación de entorno "hacking" en los bordes */
-        .hacker-overlay::before, .hacker-overlay::after {
-            content: "";
+        /* Estilo para el canvas de fondo */
+        #matrix-bg {
             position: fixed;
             top: 0;
-            width: 15px; /* Ancho de las barras laterales */
-            height: 100vh;
-            background: repeating-linear-gradient(
-                to bottom,
-                var(--neon-green),
-                rgba(0, 255, 0, 0.2) 1px,
-                transparent 1px,
-                transparent 15px
-            );
-            animation: scanline 10s linear infinite;
-            pointer-events: none;
-            z-index: 50;
-        }
-
-        .hacker-overlay::before {
             left: 0;
-            background-position: 0 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.5;
         }
 
-        .hacker-overlay::after {
-            right: 0;
-            background-position: 0 50%;
+        /* Contenedor principal sobre el fondo */
+        .main-container {
+            position: relative;
+            z-index: 10;
         }
 
-        @keyframes scanline {
-            to {
-                background-position: 0 100%;
-            }
+        /* Estilo de "glitch" para el logo */
+        @keyframes glitch {
+            0%, 100% { text-shadow: -1px -1px 0 #F0F, 1px 1px 0 #0FF; opacity: 1; }
+            25% { text-shadow: 1px 1px 0 #F0F, -1px -1px 0 #0FF; }
+            50% { text-shadow: 1px -1px 0 #F0F, -1px 1px 0 #0FF; }
+            75% { text-shadow: -1px 1px 0 #F0F, 1px -1px 0 #0FF; }
+            90% { opacity: 0.8; }
         }
+
+        .logo-ascii {
+            font-size: 14px;
+            line-height: 1.2;
+            color: #0F0;
+            text-shadow: 0 0 5px #0F0;
+            white-space: pre;
+            text-align: center;
+            animation: glitch 1.5s infinite steps(1);
+        }
+
+        /* Estilos de UI "Hacker" */
+        .hacker-box {
+            border: 1px solid #0F0;
+            background-color: rgba(0, 10, 0, 0.5); /* Fondo oscuro semi-transparente */
+            box-shadow: 0 0 10px #0F0 inset;
+            padding: 16px;
+            border-radius: 0;
+        }
+        
+        .hacker-input, .hacker-textarea {
+            background-color: #010;
+            border: 1px solid #0A0;
+            color: #0F0;
+            padding: 8px;
+            width: 100%;
+            border-radius: 0;
+            outline: none;
+            transition: all 0.3s;
+        }
+        .hacker-input:focus, .hacker-textarea:focus {
+            box-shadow: 0 0 15px #0F0;
+            border-color: #0F0;
+        }
+
+        .hacker-btn {
+            background-color: transparent;
+            border: 1px solid #0F0;
+            color: #0F0;
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: all 0.3s;
+            border-radius: 0;
+        }
+        .hacker-btn:hover {
+            background-color: #0F0;
+            color: #000;
+            box-shadow: 0 0 15px #0F0;
+        }
+
+        /* Animación de "scrolling text" para los laterales */
+        .scrolling-log {
+            height: 100vh;
+            overflow: hidden;
+            color: #050; /* Verde oscuro */
+            font-size: 12px;
+        }
+        .scrolling-log-content {
+            animation: scroll-up 60s linear infinite;
+        }
+        @keyframes scroll-up {
+            from { transform: translateY(0); }
+            to { transform: translateY(-100%); }
+        }
+
+        /* Estilo de "scan line" */
+        .scan-line {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 3px;
+            background: #0F0;
+            opacity: 0.3;
+            animation: scan 4s linear infinite;
+            z-index: 1000;
+            pointer-events: none;
+        }
+        @keyframes scan {
+            0% { top: 0%; }
+            100% { top: 100%; }
+        }
+
+        /* Modal de Reglas */
+        #rules-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0, 0, 0, 0.9);
+            z-index: 100;
+            display: none; /* Oculto por defecto */
+            justify-content: center;
+            align-items: center;
+        }
+
     </style>
 </head>
-<body class="p-4 md:p-8 min-h-screen">
+<body>
+    <!-- Fondo animado -->
+    <canvas id="matrix-bg"></canvas>
+    
+    <!-- Efecto de línea de escaneo -->
+    <div class="scan-line"></div>
 
-    <!-- Overlay de Ambientación Hacking -->
-    <div class="hacker-overlay"></div>
-
-    <div id="loading" class="text-center text-xl text-yellow-400 mt-20">
-        [ ACCESO INICIADO ] Conectando a Base de Datos Cifrada...
-        <span class="cursor-blink">|</span>
+    <!-- Modal de Reglas -->
+    <div id="rules-modal" class="p-4">
+        <div class="hacker-box max-w-lg w-full relative">
+            <h2 class="text-xl text-red-500 mb-4">[ PROTOCOLO DEL FORO ]</h2>
+            <ul class="list-disc list-inside space-y-2">
+                <li>Regla 1: La anonimidad es absoluta. No compartas información personal.</li>
+                <li>Regla 2: El conocimiento es para compartir, no para dañar.</li>
+                <li>Regla 3: No dejes rastro. Sé consciente de tu huella digital.</li>
+                <li>Regla 4: El respeto al "operador" es clave. Las ideas se debaten, no se atacan.</li>
+                <li>Regla 5: [ Imdustrias Lazarus ] no se hace responsable del contenido.</li>
+            </ul>
+            <button id="close-rules-btn" class="hacker-btn absolute top-4 right-4 text-red-500 border-red-500">X</button>
+        </div>
     </div>
 
-    <!-- Contenedor Principal del Foro -->
-    <div id="app" class="hidden max-w-4xl mx-auto crt-container p-6 rounded-xl relative z-10">
-
-        <!-- Logo ASCII -->
-        <pre class="text-xs md:text-sm lg:text-base text-center mb-6 pt-4 border-b border-green-700 pb-4">
-    .´.. /|
-   / | //
- _.´./.´./
-( LEVIATHAM )
- \_`\_`\_/
-   / / /
-  | | |
-  \_/
-        </pre>
-        <div class="text-center mb-6">
-            <h1 class="text-2xl md:text-4xl text-yellow-400 thread-title-glow">
-                [ Protocolo: KaliHunter32 ]
-            </h1>
-            <p class="text-sm text-green-500">[ Status: Online ] | [ Industrias Lazarus ]</p>
-            <p class="text-xs mt-1 text-gray-500">UID Actual: <span id="current-user-uid">Cargando...</span></p>
-        </div>
-
-        <!-- Sección de Creación de Nuevo Hilo -->
-        <div class="mb-8 p-4 bg-gray-800 rounded shadow-lg">
-            <h2 class="text-xl mb-3 text-yellow-300">[[ INICIAR TRANSMISIÓN CIFRADA ]]</h2>
-            <input type="text" id="new-thread-title" placeholder="ASUNTO (Máx 60 caracteres)" maxlength="60"
-                   class="terminal-input w-full p-2 mb-3 focus:outline-none focus:ring-0">
-            <textarea id="new-thread-content" placeholder="CONTENIDO (Máx 500 caracteres)" maxlength="500" rows="4"
-                      class="terminal-input w-full p-2 mb-3 focus:outline-none focus:ring-0 resize-none"></textarea>
-            <button id="post-thread-btn" class="terminal-button w-full p-2 uppercase font-bold">
-                [ PUBLICAR EN EL BUS DE DATOS ]
-            </button>
-            <p id="post-error-msg" class="text-red-500 mt-2 hidden">Error: No se pudo enviar el hilo. Inténtalo de nuevo.</p>
-        </div>
-
-        <!-- Lista de Hilos -->
-        <h2 class="text-2xl mb-4 text-yellow-400 border-b border-green-700 pb-2">[[ HILOS DEL SECTOR 7 ]]</h2>
-        <div id="threads-container" class="space-y-6">
-            <!-- Los hilos se inyectarán aquí por JavaScript -->
-            <p id="no-threads-msg" class="text-gray-500 text-center">[ INICIANDO NUEVOS DATOS... ] No hay hilos disponibles.</p>
-        </div>
-
-        <!-- Modal para Respuestas (Reply) -->
-        <div id="reply-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center hidden">
-            <div class="crt-container w-11/12 md:w-3/4 lg:w-1/2 p-6 rounded-xl">
-                <h3 id="modal-thread-title" class="text-xl thread-title-glow mb-4 text-yellow-300"></h3>
-                <div id="modal-thread-content" class="bg-gray-800 p-3 rounded mb-4 text-sm text-gray-200"></div>
-
-                <!-- Lista de Respuestas (Replies) -->
-                <h4 class="text-lg mb-2 text-green-400 border-b border-green-700 pb-1">:: RESPUESTAS CIFRADAS ::</h4>
-                <div id="replies-container" class="max-h-60 overflow-y-auto mb-4 space-y-2">
-                    <!-- Las respuestas se inyectarán aquí -->
+    <!-- Contenido principal -->
+    <div class="main-container min-h-screen p-4 md:p-8">
+        
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-4">
+            
+            <!-- Sidebar Izquierdo (Hacking) -->
+            <aside class="hidden md:block md:col-span-3">
+                <div class="scrolling-log">
+                    <pre id="log-left" class="scrolling-log-content"></pre>
                 </div>
+            </aside>
 
-                <!-- Formulario de Nueva Respuesta -->
-                <textarea id="new-reply-content" placeholder="Tu Respuesta Anónima (Máx 300 caracteres)" maxlength="300" rows="3"
-                          class="terminal-input w-full p-2 mb-3 focus:outline-none focus:ring-0 resize-none text-sm"></textarea>
-                <button id="post-reply-btn" class="terminal-button p-2 font-bold mr-2 w-full md:w-auto">
-                    [ ENVIAR RESPUESTA ]
-                </button>
-                <button id="close-modal-btn" class="terminal-button p-2 font-bold bg-red-800 hover:bg-red-700 mt-2 md:mt-0 w-full md:w-auto">
-                    [ CERRAR CONEXIÓN ]
-                </button>
-                <p id="reply-error-msg" class="text-red-500 mt-2 hidden">Error: No se pudo enviar la respuesta.</p>
-            </div>
+            <!-- Contenido Central del Foro -->
+            <main class="md:col-span-6">
+                <header class="text-center mb-8">
+                    <pre class="logo-ascii">
+[ Iniciando Codificación ]
+
+               .'.. /|
+              / |  //
+           _.'./.'./
+          ( LEVIATHAM )
+           \_`\_`\_/
+             / / /
+            | | |
+             \_/
+    
+[ Status: Online ]
+
+[ Imdustrias Lazarus ]
+
+          [ KaliHunter32 ]
+</pre>
+                    <div class="flex justify-center gap-4 mt-4">
+                        <span class="text-green-400">Tu ID: <span id="user-id-display">Conectando...</span></span>
+                        <button id="show-rules-btn" class="text-red-500 hover:text-red-300">[ VER REGLAS ]</button>
+                    </div>
+                </header>
+
+                <!-- Formulario de Nuevo Post -->
+                <section id="new-post-form" class="hacker-box mb-8">
+                    <h2 class="text-lg mb-2">[ INICIAR NUEVA TRANSMISIÓN ]</h2>
+                    <textarea id="post-text" class="hacker-textarea" rows="4" placeholder="Escribe tu mensaje..."></textarea>
+                    <button id="submit-post-btn" class="hacker-btn mt-2">ENVIAR</button>
+                </section>
+
+                <!-- Sección de Posts -->
+                <section id="posts-section">
+                    <h2 class="text-xl mb-4">[ TRANSMISIONES ACTIVAS ]</h2>
+                    <div id="posts-container" class="space-y-6">
+                        <!-- Los posts se cargarán aquí -->
+                        <p>Cargando transmisiones...</p>
+                    </div>
+                </section>
+            </main>
+            
+            <!-- Sidebar Derecho (Hacking) -->
+            <aside class="hidden md:block md:col-span-3">
+                <div class="scrolling-log">
+                    <pre id="log-right" class="scrolling-log-content"></pre>
+                </div>
+            </aside>
+
         </div>
     </div>
 
-    <!-- Scripts de Firebase y Lógica del Foro -->
+    <!-- Firebase SDKs -->
     <script type="module">
+        // Importar funciones de Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
-        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
-        import { getFirestore, doc, addDoc, setDoc, onSnapshot, collection, query, orderBy, serverTimestamp, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
-        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { getAuth, signInAnonymously, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            onSnapshot, 
+            query, 
+            serverTimestamp, 
+            doc, 
+            updateDoc, 
+            arrayUnion,
+            setLogLevel
+        } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // Configuración de Logging para Debug
-        setLogLevel('Debug');
+        // --- Configuración de Firebase ---
+        // Usar las variables globales proporcionadas por el entorno
+        const firebaseConfig = typeof __firebase_config !== 'undefined' 
+            ? JSON.parse(__firebase_config)
+            : {
+                // Fallback con tu config si las variables no están (aunque en el entorno sí estarán)
+                apiKey: "AIzaSyBZCPk8qp39BoQ99qLfoQlT6pabnqaqinY",
+                authDomain: "foro-513fa.firebaseapp.com",
+                projectId: "foro-513fa",
+                storageBucket: "foro-513fa.firebasestorage.app",
+                messagingSenderId: "18055166367",
+                appId: "1:18055166367:web:f6c6c421dd385eab4165aa"
+            };
+        
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'foro-513fa';
+        setLogLevel('Debug'); // Para ver logs de Firestore
 
-        // 1. Configuración de Firebase
-        let db, auth;
-        let userId = null;
-        let authReady = false;
-
-        // Variables de entorno MANDATORIAS
-        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
-        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
-
-        if (firebaseConfig) {
-            try {
-                const app = initializeApp(firebaseConfig);
-                db = getFirestore(app);
-                auth = getAuth(app);
-            } catch (error) {
-                console.error("Error al inicializar Firebase:", error);
-                document.getElementById('loading').textContent = '[ ERROR FATAL ] No se pudo iniciar el servicio Firebase. Revisa la consola.';
-                // Se eliminó el 'return;' ilegal en el ámbito de módulo.
-            }
-        } else {
-             document.getElementById('loading').textContent = '[ ERROR FATAL ] Configuración de Firebase no disponible.';
-             // Se eliminó el 'return;' ilegal en el ámbito de módulo.
+        // --- Inicialización de Firebase ---
+        let app, auth, db, currentUserId, currentUserHandle;
+        try {
+            app = initializeApp(firebaseConfig);
+            auth = getAuth(app);
+            db = getFirestore(app);
+            console.log("[SYSTEM] Firebase inicializado.");
+        } catch (e) {
+            console.error("[ERROR] Conexión fallida con Firebase: ", e);
+            document.getElementById('posts-container').innerHTML = '<p class="text-red-500">[ ERROR DE CONEXIÓN AL NÚCLEO ]</p>';
         }
 
-        // 2. Lógica de Autenticación (Anonimato Requerido)
-        async function authenticateAnonUser() {
-            try {
-                await setPersistence(auth, browserSessionPersistence);
-                if (initialAuthToken) {
-                    await signInWithCustomToken(auth, initialAuthToken);
-                } else {
-                    await signInAnonymously(auth);
-                }
-            } catch (error) {
-                console.error("Error de autenticación:", error);
-                document.getElementById('loading').textContent = '[ ERROR DE AUTH ] No se pudo establecer la conexión anónima.';
-            }
-        }
-
-        // Listener de estado de autenticación
-        // Se añade un chequeo para 'auth' para evitar un error de tiempo de ejecución
-        // si la inicialización de Firebase falló.
-        if (auth) {
-            onAuthStateChanged(auth, (user) => {
-                if (user) {
-                    userId = user.uid;
-                    authReady = true;
-                    const anonId = generateAnonId(userId);
-                    document.getElementById('current-user-uid').textContent = anonId;
-                    document.getElementById('loading').classList.add('hidden');
-                    document.getElementById('app').classList.remove('hidden');
-                    console.log("Usuario autenticado (anónimo):", userId);
-                    loadThreads();
-                } else if (authReady === false) {
-                    // Solo intentamos autenticar si no se ha hecho ya (o si la sesión expiró)
-                    authenticateAnonUser();
-                }
-            });
-        }
-
-        // Genera un ID anónimo basado en el UID para mantener la consistencia
-        function generateAnonId(uid) {
-            // Usa el UID y un pequeño hash para crear un identificador anónimo
-            const hash = uid.substring(uid.length - 4).toUpperCase();
-            return `Anon-${hash}`;
-        }
-
-        // Función para obtener la ruta de la colección de hilos (Público)
-        function getThreadsCollectionRef() {
-            return collection(db, `artifacts/${appId}/public/data/forum_threads`);
-        }
-
-        // 3. Lógica para Publicar un Nuevo Hilo
-        document.getElementById('post-thread-btn').addEventListener('click', async () => {
-            if (!authReady || !userId) return;
-
-            const titleInput = document.getElementById('new-thread-title');
-            const contentInput = document.getElementById('new-thread-content');
-            const errorMsg = document.getElementById('post-error-msg');
-
-            const title = titleInput.value.trim();
-            const content = contentInput.value.trim();
-
-            if (title.length < 5 || content.length < 10) {
-                errorMsg.textContent = 'Error: El ASUNTO y el CONTENIDO son obligatorios (mínimo 5 y 10 caracteres).';
-                errorMsg.classList.remove('hidden');
-                return;
-            }
-            errorMsg.classList.add('hidden');
-
-            try {
-                await addDoc(getThreadsCollectionRef(), {
-                    title: title,
-                    content: content,
-                    authorId: generateAnonId(userId),
-                    timestamp: serverTimestamp(),
-                    replyCount: 0
+        // --- Autenticación Anónima ---
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                // Usuario ya está logueado (anónimamente)
+                currentUserId = user.uid;
+                currentUserHandle = `Anónimo-${user.uid.substring(0, 6)}`;
+                document.getElementById('user-id-display').textContent = currentUserHandle;
+                console.log(`[AUTH] Conexión establecida. ID: ${currentUserHandle}`);
+                // Cargar posts una vez que tenemos auth
+                loadPosts();
+            } else {
+                // Loguear al usuario anónimamente
+                signInAnonymously(auth).catch((error) => {
+                    console.error("[ERROR] Fallo de autenticación anónima: ", error);
                 });
-
-                // Limpiar campos
-                titleInput.value = '';
-                contentInput.value = '';
-            } catch (e) {
-                console.error("Error al añadir documento: ", e);
-                errorMsg.textContent = 'Error de conexión: No se pudo publicar el hilo.';
-                errorMsg.classList.remove('hidden');
             }
         });
 
-        // 4. Lógica para Cargar Hilos (Tiempo Real)
-        function loadThreads() {
-            if (!db) return;
+        // --- Lógica del Foro ---
+        const postsCollectionRef = collection(db, `artifacts/${appId}/public/data/posts`);
+        const postsContainer = document.getElementById('posts-container');
+        const postTextInput = document.getElementById('post-text');
+        const submitPostBtn = document.getElementById('submit-post-btn');
 
-            const q = query(getThreadsCollectionRef(), orderBy("timestamp", "desc"));
-            const threadsContainer = document.getElementById('threads-container');
-            const noThreadsMsg = document.getElementById('no-threads-msg');
-
+        // Cargar y mostrar posts en tiempo real
+        function loadPosts() {
+            const q = query(postsCollectionRef); // Podríamos ordenar por 'timestamp' pero requiere índice
+            
             onSnapshot(q, (snapshot) => {
-                threadsContainer.innerHTML = '';
                 if (snapshot.empty) {
-                    noThreadsMsg.classList.remove('hidden');
+                    postsContainer.innerHTML = '<p>[ No hay transmisiones. Inicia una. ]</p>';
                     return;
                 }
-                noThreadsMsg.classList.add('hidden');
 
-                snapshot.forEach((doc) => {
-                    const thread = doc.data();
-                    const threadId = doc.id;
-                    const date = thread.timestamp ? new Date(thread.timestamp.seconds * 1000).toLocaleString('es-ES') : 'Desconocida';
-                    
-                    const threadCard = `
-                        <div class="thread-card p-4 border border-green-700 rounded-lg bg-gray-900 transition duration-150 hover:border-yellow-400">
-                            <h3 class="text-lg font-bold thread-title-glow text-yellow-300">${thread.title}</h3>
-                            <p class="text-sm text-gray-400 mt-1">[ Autor: ${thread.authorId} | ${date} ]</p>
-                            <p class="text-sm text-gray-200 mt-2 overflow-hidden max-h-12">${thread.content.substring(0, 150)}...</p>
-                            <div class="flex justify-between items-center mt-3">
-                                <span class="text-xs text-green-500">[ Respuestas: ${thread.replyCount || 0} ]</span>
-                                <button data-thread-id="${threadId}" class="reply-button terminal-button text-xs px-3 py-1 uppercase">
-                                    >> ACCEDER A LA DATA
-                                </button>
-                            </div>
+                const posts = [];
+                snapshot.forEach(doc => {
+                    posts.push({ ...doc.data(), id: doc.id });
+                });
+
+                // Ordenar en el cliente (más simple que configurar índices de Firestore)
+                // Ordenamos descendente para ver los más nuevos primero
+                posts.sort((a, b) => b.timestamp?.seconds - a.timestamp?.seconds);
+
+                postsContainer.innerHTML = ''; // Limpiar contenedor
+                posts.forEach(post => {
+                    const postElement = createPostElement(post);
+                    postsContainer.appendChild(postElement);
+                });
+
+            }, (error) => {
+                console.error("[ERROR] Fallo al cargar posts: ", error);
+                postsContainer.innerHTML = '<p class="text-red-500">[ FALLO EN LA RECEPCIÓN DE DATOS ]</p>';
+            });
+        }
+
+        // Crear elemento HTML para un post
+        function createPostElement(post) {
+            const div = document.createElement('div');
+            div.className = 'hacker-box post-entry';
+            div.setAttribute('data-id', post.id);
+
+            const time = post.timestamp ? new Date(post.timestamp.seconds * 1000).toLocaleString() : 'Enviando...';
+
+            // Renderizar respuestas
+            let repliesHTML = '<div class="space-y-2 mt-4 pl-4 border-l-2 border-green-700">';
+            if (post.replies && post.replies.length > 0) {
+                // Ordenar respuestas por fecha
+                post.replies.sort((a, b) => a.timestamp?.seconds - b.timestamp?.seconds);
+                
+                post.replies.forEach(reply => {
+                    const replyTime = reply.timestamp ? new Date(reply.timestamp.seconds * 1000).toLocaleString() : '...';
+                    repliesHTML += `
+                        <div class="text-sm">
+                            <p class="text-green-300">${reply.text}</p>
+                            <span class="text-xs text-green-600">>> ${reply.author} @ ${replyTime}</span>
                         </div>
                     `;
-                    threadsContainer.insertAdjacentHTML('beforeend', threadCard);
                 });
-
-                // Añadir listeners a los nuevos botones de respuesta
-                document.querySelectorAll('.reply-button').forEach(button => {
-                    button.addEventListener('click', (e) => {
-                        const threadId = e.target.getAttribute('data-thread-id');
-                        openReplyModal(threadId);
-                    });
-                });
-            }, (error) => {
-                console.error("Error al cargar hilos:", error);
-                threadsContainer.innerHTML = '<p class="text-red-500">[ ERROR DE CONEXIÓN ] Fallo al cargar los hilos del foro.</p>';
-                noThreadsMsg.classList.add('hidden');
-            });
-        }
-
-        // 5. Lógica del Modal de Respuestas
-        let currentThreadId = null;
-        const modal = document.getElementById('reply-modal');
-        const repliesContainer = document.getElementById('replies-container');
-        const modalTitle = document.getElementById('modal-thread-title');
-        const modalContent = document.getElementById('modal-thread-content');
-        const postReplyBtn = document.getElementById('post-reply-btn');
-        const newReplyContent = document.getElementById('new-reply-content');
-        const replyErrorMsg = document.getElementById('reply-error-msg');
-
-        function openReplyModal(threadId) {
-            currentThreadId = threadId;
-            modal.classList.remove('hidden');
-            replyErrorMsg.classList.add('hidden');
-
-            // Cargar el hilo principal y configurar el listener de respuestas
-            const threadRef = doc(getThreadsCollectionRef(), threadId);
-
-            // Listener para el hilo principal (para título y contenido)
-            onSnapshot(threadRef, (docSnap) => {
-                if (docSnap.exists()) {
-                    const thread = docSnap.data();
-                    modalTitle.textContent = `ASUNTO: ${thread.title}`;
-                    modalContent.textContent = thread.content;
-                } else {
-                    modalTitle.textContent = 'Hilo no encontrado';
-                    modalContent.textContent = 'El hilo fue eliminado del bus de datos.';
-                }
-            });
-
-            // Listener para las respuestas del hilo
-            const repliesRef = collection(threadRef, "replies");
-            const qReplies = query(repliesRef, orderBy("timestamp", "asc"));
-
-            onSnapshot(qReplies, (snapshot) => {
-                repliesContainer.innerHTML = '';
-                if (snapshot.empty) {
-                    repliesContainer.innerHTML = '<p class="text-gray-500 text-sm italic">[ Sin respuestas, Sé el primero en inyectar datos. ]</p>';
-                } else {
-                    snapshot.forEach((doc) => {
-                        const reply = doc.data();
-                        const date = reply.timestamp ? new Date(reply.timestamp.seconds * 1000).toLocaleString('es-ES') : 'Desconocida';
-                        const replyElement = `
-                            <div class="border-l-2 border-green-500 pl-3 py-1 bg-gray-800 rounded">
-                                <p class="text-xs text-green-500">[ RE: ${reply.authorId} | ${date} ]</p>
-                                <p class="text-sm text-gray-300 whitespace-pre-wrap">${reply.content}</p>
-                            </div>
-                        `;
-                        repliesContainer.insertAdjacentHTML('beforeend', replyElement);
-                    });
-                }
-            }, (error) => {
-                console.error("Error al cargar respuestas:", error);
-                repliesContainer.innerHTML = '<p class="text-red-500">[ ERROR DE CONEXIÓN ] Fallo al cargar las respuestas.</p>';
-            });
-        }
-
-        // Lógica para enviar una respuesta
-        postReplyBtn.addEventListener('click', async () => {
-            if (!authReady || !userId || !currentThreadId) return;
-
-            const content = newReplyContent.value.trim();
-            if (content.length < 5) {
-                replyErrorMsg.textContent = 'Error: La respuesta debe tener al menos 5 caracteres.';
-                replyErrorMsg.classList.remove('hidden');
-                return;
             }
-            replyErrorMsg.classList.add('hidden');
+            repliesHTML += '</div>';
 
-            try {
-                // 1. Añadir la respuesta
-                const threadRef = doc(getThreadsCollectionRef(), currentThreadId);
-                const repliesRef = collection(threadRef, "replies");
+            div.innerHTML = `
+                <p class="text-lg">${post.text}</p>
+                <div class="text-xs text-green-500 mt-2">
+                    <span>ID: ${post.author}</span> | <span>${time}</span>
+                </div>
+                ${repliesHTML}
+                <!-- Formulario de Respuesta -->
+                <div class="mt-4 flex gap-2">
+                    <input type="text" class="hacker-input reply-input text-sm" placeholder="Responder...">
+                    <button class="hacker-btn reply-btn text-sm">RESPONDER</button>
+                </div>
+            `;
 
-                await addDoc(repliesRef, {
-                    content: content,
-                    authorId: generateAnonId(userId),
-                    timestamp: serverTimestamp()
-                });
-
-                // 2. Actualizar el contador de respuestas del hilo principal usando una transacción
-                await runTransaction(db, async (transaction) => {
-                    const threadDoc = await transaction.get(threadRef);
-                    if (!threadDoc.exists()) {
-                        throw "Document does not exist!";
+            // Añadir listener al botón de responder
+            div.querySelector('.reply-btn').addEventListener('click', () => {
+                const replyInput = div.querySelector('.reply-input');
+                const replyText = replyInput.value.trim();
+                if (replyText) {
+                    submitReply(post.id, replyText);
+                    replyInput.value = ''; // Limpiar input
+                }
+            });
+            
+            // Permitir enviar respuesta con "Enter"
+            div.querySelector('.reply-input').addEventListener('keydown', (e) => {
+                if (e.key === 'Enter') {
+                    const replyText = e.target.value.trim();
+                    if (replyText) {
+                        submitReply(post.id, replyText);
+                        e.target.value = '';
                     }
-                    const newReplyCount = (threadDoc.data().replyCount || 0) + 1;
-                    transaction.update(threadRef, { replyCount: newReplyCount });
-                });
+                }
+            });
 
+            return div;
+        }
 
-                newReplyContent.value = ''; // Limpiar campo
-            } catch (e) {
-                console.error("Error al enviar respuesta o actualizar contador: ", e);
-                replyErrorMsg.textContent = 'Error de transmisión: No se pudo enviar la respuesta.';
-                replyErrorMsg.classList.remove('hidden');
+        // Enviar un nuevo post
+        async function submitNewPost() {
+            const text = postTextInput.value.trim();
+            if (text && currentUserHandle) {
+                try {
+                    await addDoc(postsCollectionRef, {
+                        text: text,
+                        author: currentUserHandle,
+                        timestamp: serverTimestamp(),
+                        replies: []
+                    });
+                    postTextInput.value = ''; // Limpiar textarea
+                    console.log("[SYSTEM] Nueva transmisión enviada.");
+                } catch (e) {
+                    console.error("[ERROR] Fallo al enviar post: ", e);
+                }
             }
-        });
+        }
 
-        // Botón para cerrar el modal
-        document.getElementById('close-modal-btn').addEventListener('click', () => {
-            modal.classList.add('hidden');
-            currentThreadId = null;
-            // Opcional: limpiar listeners (aunque onSnapshot se limpia automáticamente en la desconexión si se maneja bien)
+        // Enviar una respuesta
+        async function submitReply(postId, text) {
+            if (!text || !currentUserHandle) return;
+
+            const postDocRef = doc(db, `artifacts/${appId}/public/data/posts`, postId);
+            
+            try {
+                await updateDoc(postDocRef, {
+                    replies: arrayUnion({
+                        text: text,
+                        author: currentUserHandle,
+                        timestamp: new Date() // Usamos new Date() para arrayUnion, serverTimestamp es más complejo aquí
+                    })
+                });
+                console.log("[SYSTEM] Respuesta enviada.");
+            } catch (e) {
+                console.error("[ERROR] Fallo al enviar respuesta: ", e);
+            }
+        }
+
+        // Listeners de UI
+        submitPostBtn.addEventListener('click', submitNewPost);
+
+        // --- Efectos Visuales (Hacking) ---
+
+        // 1. Fondo de "Matrix"
+        const canvas = document.getElementById('matrix-bg');
+        const ctx = canvas.getContext('2d');
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const katakana = 'アァカサタナハマヤャラワガザダバパイィキシチニヒミリヰギジヂビピウゥクスツヌフムユュルグズブヅプエェケセテネヘメレヱゲゼデベペオォコソトノホモヨョロヲゴゾドボポヴッン';
+        const latin = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890';
+        const chars = katakana + latin;
+        const fontSize = 16;
+        const columns = canvas.width / fontSize;
+        const drops = Array(Math.floor(columns)).fill(1);
+
+        function drawMatrix() {
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.05)'; // Fondo semi-transparente para el efecto "fade"
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+            
+            ctx.fillStyle = '#0F0'; // Color del texto
+            ctx.font = `${fontSize}px monospace`;
+
+            for (let i = 0; i < drops.length; i++) {
+                const text = chars[Math.floor(Math.random() * chars.length)];
+                ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+                // Reset drop si sale de la pantalla, con un efecto aleatorio
+                if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+                    drops[i] = 0;
+                }
+                drops[i]++;
+            }
+        }
+        setInterval(drawMatrix, 40);
+
+        // 2. Texto de "log" en los laterales
+        const logLeft = document.getElementById('log-left');
+        const logRight = document.getElementById('log-right');
+        const logMessages = [
+            '[INFO] KERNEL_MODULE_LOADED: vfs_cache.ko',
+            '[WARN] CPU_TEMP_HIGH: Core 0 @ 85C',
+            '[INIT] Mounting /dev/sda1...',
+            '[AUTH] User root login attempt from 192.168.1.102',
+            '[NET] PACKET_DROPPED: (RST_FLAG) TTL=0',
+            '[SYS] SYN_FLOOD detected. Engaging countermeasures.',
+            '[SEC] Firewall rule #403 applied. Port 22 closed.',
+            '[DATA] Compiling payload... 0x00f1... 0x01a3...',
+            '[OK] Access granted to node: 8.8.8.8',
+            '[ERR] STACK_OVERFLOW: 0xDEADBEEF',
+            '[DEBUG] Shifting memory registers... done.'
+        ];
+
+        function generateLogLines(count) {
+            let content = '';
+            for (let i = 0; i < count; i++) {
+                content += `${logMessages[Math.floor(Math.random() * logMessages.length)]}\n`;
+            }
+            return content;
+        }
+        // Generar contenido duplicado para el efecto de scroll infinito
+        const logContent = generateLogLines(200);
+        if (logLeft) logLeft.innerHTML = logContent + logContent;
+        if (logRight) logRight.innerHTML = logContent + logContent;
+
+        // 3. Modal de Reglas
+        const rulesModal = document.getElementById('rules-modal');
+        const showRulesBtn = document.getElementById('show-rules-btn');
+        const closeRulesBtn = document.getElementById('close-rules-btn');
+        
+        showRulesBtn.addEventListener('click', () => {
+            rulesModal.style.display = 'flex';
+        });
+        closeRulesBtn.addEventListener('click', () => {
+            rulesModal.style.display = 'none';
         });
 
     </script>
