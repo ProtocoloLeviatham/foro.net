@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LEVIATHAM - Foro Anónimo</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+</head>
+<body>
+    <div class="monitor-frame">
+        <header class="scanline">
+            <pre class="logo">
+[ Iniciando Codificación ]
+            
+              .'.. /|
+             / |  //
+           _.'./.'./
+          ( LEVIATHAM )
+           \_`\_`\_/
+             / / /
+            | | |
+            \_/
+            
+[ Status: Online ]
+[ Industrias Lazarus ]
+              [ KaliHunter32 ]</pre>
+        </header>
+
+        <main id="forum-container">
+            <div id="new-thread-form" class="forum-box">
+                <h2>> Nueva Transmisión Anónima</h2>
+                <input type="text" id="thread-author" placeholder="Alias (Opcional, 'Anon' por defecto)">
+                <textarea id="thread-content" placeholder="Escribe tu mensaje o hilo aquí..."></textarea>
+                <button onclick="publishThread()">ENVIAR (ACK)</button>
+            </div>
+
+            <div id="threads-list" class="forum-box">
+                <h2>> Hilos de Datos Cifrados:</h2>
+                </div>
+        </main>
+        
+        <div id="matrix-overlay"></div>
+    </div>
+    
+    <script src="script.js"></script>
+</body>
+</html>
