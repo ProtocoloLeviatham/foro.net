@@ -36,12 +36,12 @@ function displayStatusMessage(message, isError = false) {
     
     if (isError) {
         statusBox.classList.add('error-box');
-        statusBox.style.color = '#FF0000'; // Rojo
+        statusBox.style.color = '#FF0000'; // Red
     } else {
-        statusBox.style.color = '#39FF14'; // Verde Neon
+        statusBox.style.color = '#39FF14'; // Neon Green
     }
 
-    // Ocultar el mensaje después de 5 segundos
+    // Hide the message after 5 seconds
     setTimeout(() => {
         statusBox.classList.add('hidden');
     }, 5000);
@@ -53,14 +53,11 @@ function displayStatusMessage(message, isError = false) {
  */
 function initializeFirebaseAndApp() {
     try {
-        // Usamos firebase.compat.initializeApp para la versión de compatibilidad (v9)
         const app = firebase.initializeApp(firebaseConfig); 
         db = firebase.firestore();
         
-        // Colección principal para los mensajes del foro. 
-        // Usaremos 'foro-posts' como nombre de colección para diferenciar.
-        // Asegúrate de que esta colección exista en tu Firestore o se creará al primer envío.
-        postsCollection = db.collection('foro-posts'); 
+        // ¡CAMBIO CRÍTICO! Usamos 'posts' para coincidir con las reglas.
+        postsCollection = db.collection('posts'); 
 
         // Autenticación simple (anónima)
         const auth = firebase.auth();
@@ -117,7 +114,7 @@ function startPostListener() {
 
         }, error => {
             console.error("[FIRESTORE ERROR] Error al escuchar posts:", error);
-            displayStatusMessage("ERROR: Fallo al cargar el historial del canal.", true);
+            displayStatusMessage("ERROR: Fallo al cargar el historial del canal. (Revisar Reglas)", true);
         });
 }
 
@@ -139,19 +136,19 @@ function handlePostSubmit(e) {
         displayStatusMessage("ALERTA: El contenido del Thread no puede estar vacío.", true);
         return;
     }
-    if (content.length > 280) {
+    if (content.length > 280) { // Limitamos a 280 como dijimos en HTML
         displayStatusMessage("ALERTA: Contenido excede 280 caracteres.", true);
         return;
     }
     if (!username) {
-        username = "Agente_Anónimo";
+        username = "Agente_Anonimo";
     }
 
     // Objeto del nuevo post
     const newPost = {
         username: username,
         content: content,
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(), // Marca de tiempo del servidor
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(), // Timestamp requerido por la regla
         authorId: userId || 'unknown'
     };
 
@@ -163,7 +160,8 @@ function handlePostSubmit(e) {
         })
         .catch(error => {
             console.error("[FIRESTORE ERROR] Error al añadir el post:", error);
-            displayStatusMessage("ERROR: Fallo en la inyección de datos.", true);
+            // Mensaje de error más específico para el usuario
+            displayStatusMessage("ERROR: Fallo en la inyección de datos. (¿Reglas de Firestore?)", true);
         });
 }
 
@@ -204,7 +202,7 @@ function renderPosts(posts) {
         
         const postElement = document.createElement('div');
         postElement.className = 'post-card';
-        // Verificar si el post fue creado por el usuario actual
+        // Check if the post was created by the current user
         const isUserPost = post.authorId === userId;
         
         postElement.innerHTML = `
@@ -215,7 +213,7 @@ function renderPosts(posts) {
                 <span class="post-time">${timeString}</span>
             </div>
             <div class="post-content">${post.content}</div>
-            <p class="text-xs text-gray-600 mt-2">ID: ${post.authorId.substring(0, 8)}...</p>
+            <p class="text-xs text-gray-600 mt-2">ID: ${post.authorId ? post.authorId.substring(0, 8) + '...' : 'N/A'}</p>
         `;
         
         container.appendChild(postElement);
@@ -237,8 +235,3 @@ window.onload = function () {
         form.addEventListener('submit', handlePostSubmit);
     }
 };
-
-}); // Fin de DOMContentLoaded
-});
-
-
