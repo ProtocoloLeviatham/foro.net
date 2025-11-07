@@ -1,0 +1,139 @@
+:root {
+    --color-text: #00ff41; /* Verde Matrix */
+    --color-bg: #111;
+    --color-accent: #00cc33;
+    --font-terminal: 'Consolas', 'Courier New', monospace;
+}
+
+body {
+    background-color: #000;
+    color: var(--color-text);
+    font-family: var(--font-terminal);
+    margin: 0;
+    padding: 0;
+    overflow-x: hidden;
+}
+
+/* ------------------------------------- */
+/* EFECTO MATRIX (MOVIMIENTO/ANIMACIÓN) */
+/* ------------------------------------- */
+
+#matrix-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: -1;
+    background: repeating-linear-gradient(
+        transparent, 
+        transparent 1px, 
+        rgba(0, 255, 65, 0.05) 1.5px, 
+        transparent 2px
+    );
+    animation: background-move 60s linear infinite;
+}
+
+@keyframes background-move {
+    from { background-position: 0 0; }
+    to { background-position: 0 1000px; }
+}
+
+/* ------------------------------------- */
+/* ESTILO DE TERMINAL/FORO */
+/* ------------------------------------- */
+
+.monitor-frame {
+    width: 90%;
+    max-width: 1200px;
+    margin: 40px auto;
+    border: 3px solid var(--color-accent);
+    box-shadow: 0 0 20px var(--color-accent), inset 0 0 20px var(--color-accent);
+    background-color: rgba(0, 0, 0, 0.85); /* Semitransparente para ver el fondo */
+    padding: 20px;
+    border-radius: 5px;
+}
+
+.scanline {
+    /* Efecto de línea de escaneo sutil */
+    border-bottom: 2px solid var(--color-accent);
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+    background: linear-gradient(rgba(18, 16, 16, 0.8) 50%, rgba(0, 0, 0, 0.2) 50%),
+                linear-gradient(90deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.06) 1px, transparent 1px);
+    background-size: 100% 4px, 3px 3px;
+}
+
+.logo {
+    text-align: center;
+    font-size: 0.8em;
+    color: var(--color-text);
+    text-shadow: 0 0 5px var(--color-accent);
+    white-space: pre; /* Mantiene el formato ASCII ART */
+}
+
+h2 {
+    color: var(--color-accent);
+    border-left: 5px solid var(--color-accent);
+    padding-left: 10px;
+    text-transform: uppercase;
+}
+
+/* Estilo para los contenedores de hilos y formularios */
+.forum-box {
+    border: 1px dashed var(--color-accent);
+    padding: 15px;
+    margin-bottom: 25px;
+}
+
+/* Estilo de los formularios (inputs y textarea) */
+input[type="text"], textarea {
+    width: calc(100% - 22px);
+    padding: 10px;
+    margin: 5px 0 15px 0;
+    background-color: #000;
+    border: 1px solid var(--color-accent);
+    color: var(--color-text);
+    font-family: var(--font-terminal);
+    font-size: 1em;
+    resize: vertical;
+}
+
+/* Estilo del botón */
+button {
+    background-color: var(--color-accent);
+    color: #000;
+    border: none;
+    padding: 10px 20px;
+    text-transform: uppercase;
+    font-weight: bold;
+    cursor: pointer;
+    transition: background-color 0.3s, color 0.3s;
+}
+
+button:hover {
+    background-color: var(--color-text);
+    color: #000;
+    box-shadow: 0 0 10px var(--color-text);
+}
+
+/* Estilo de los hilos */
+.thread-post {
+    border: 1px solid var(--color-text);
+    padding: 15px;
+    margin-bottom: 10px;
+    background-color: rgba(0, 0, 0, 0.5);
+    cursor: pointer; /* Para indicar que se puede hacer clic para ver respuestas */
+}
+
+.thread-post h3 {
+    margin: 0 0 5px 0;
+    color: var(--color-accent);
+    text-shadow: 0 0 2px var(--color-accent);
+}
+
+.thread-meta {
+    font-size: 0.8em;
+    color: #999;
+    margin-bottom: 10px;
+}
