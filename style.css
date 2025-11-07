@@ -1,21 +1,83 @@
 :root {
     --color-text: #00ff41; /* Verde Matrix */
-    --color-bg: #111;
+    --color-bg: #000;
     --color-accent: #00cc33;
     --font-terminal: 'Consolas', 'Courier New', monospace;
 }
 
 body {
-    background-color: #000;
+    background-color: var(--color-bg);
     color: var(--color-text);
     font-family: var(--font-terminal);
     margin: 0;
     padding: 0;
     overflow-x: hidden;
+    line-height: 1.5;
+}
+
+.hidden {
+    display: none !important;
 }
 
 /* ------------------------------------- */
-/* EFECTO DE CÓDIGO MATRIX Y SCANLINE MÁS INTENSO */
+/* 01. ANIMACIÓN DE CARGA INICIAL (PRELOADER) */
+/* ------------------------------------- */
+
+#preloader {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: var(--color-bg);
+    z-index: 9999;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#terminal-screen {
+    width: 80%;
+    max-width: 600px;
+    padding: 20px;
+    border: 3px solid var(--color-accent);
+    box-shadow: 0 0 20px var(--color-accent);
+    animation: flicker 1s infinite alternate;
+}
+
+#terminal-screen p {
+    overflow: hidden;
+    white-space: nowrap;
+    width: 0;
+    animation: typing 0.5s steps(30, end) forwards,
+               blink 1s step-end infinite;
+    font-size: 1.1em;
+    margin: 5px 0;
+}
+
+#terminal-screen p:nth-child(1) { animation-delay: 0s, 0.5s; }
+#terminal-screen p:nth-child(2) { animation-delay: 1.5s, 2s; }
+#terminal-screen p:nth-child(3) { animation-delay: 3s, 3.5s; }
+#terminal-screen p:nth-child(4) { animation-delay: 4.5s, 5s; }
+#terminal-screen p:nth-child(5) { animation-delay: 6s, 6.5s; color: red; } /* Mensaje final */
+
+
+@keyframes typing {
+    from { width: 0 }
+    to { width: 100% }
+}
+
+.blink {
+    animation: blink-caret 0.75s step-end infinite;
+}
+
+@keyframes blink-caret {
+    from, to { border-color: transparent }
+    50% { border-color: var(--color-text); }
+}
+
+/* ------------------------------------- */
+/* 02. EFECTOS DE FONDO Y MARCO */
 /* ------------------------------------- */
 
 #matrix-overlay {
@@ -24,181 +86,159 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
-    z-index: -1;
-    /* Efecto combinado: Lluvia de código (matrix) y línea de escaneo */
+    z-index: -2; /* Detrás de todo */
     background: 
-        /* Líneas de escaneo horizontales */
-        repeating-linear-gradient(
-            transparent, 
-            transparent 1px, 
-            rgba(0, 255, 65, 0.08) 1.5px, 
-            transparent 2px
-        ),
-        /* Puntos de código aleatorios y animados */
-        url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><filter id="noise"><feTurbulence baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#noise)" opacity="0.1"/></svg>');
+        repeating-linear-gradient(transparent, transparent 1px, rgba(0, 255, 65, 0.05) 2px),
+        /* Capa de códigos en movimiento */
+        url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><filter id="n"><feTurbulence baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#n)" opacity="0.1"/></svg>');
     
-    background-size: 100% 2px, 200px 200px;
+    background-size: 100% 2px, 300px 300px;
     animation: background-move 40s linear infinite, code-flicker 10s steps(10) infinite;
 }
 
-@keyframes background-move {
-    from { background-position: 0 0; }
-    to { background-position: 0 1000px; }
+@keyframes background-move { from { background-position: 0 0; } to { background-position: 0 1000px; } }
+@keyframes code-flicker { 0% { background-position-x: 0; } 100% { background-position-x: 1000px; } }
+
+/* Logo temático de fondo (Shadow-Brokers/ASCII) */
+#shadow-brooks-logo {
+    position: fixed;
+    bottom: -100px; /* Escondido un poco */
+    right: -100px;
+    font-size: 20em;
+    opacity: 0.03; /* Muy sutil */
+    color: var(--color-accent);
+    z-index: -1;
+    content: "LΣV1ΔTHΛM"; /* Simula el logo Shadow-Brokers con caracteres */
+    filter: blur(2px);
+    animation: logo-drift 60s linear infinite alternate;
 }
 
-@keyframes code-flicker {
-    0% { background-position-x: 0; }
-    100% { background-position-x: 1000px; }
+@keyframes logo-drift {
+    0% { transform: translate(0, 0) rotate(0deg); }
+    100% { transform: translate(-50px, -50px) rotate(5deg); }
 }
 
-/* ------------------------------------- */
-/* EFECTO DE GLITCH (FALLO) EN TEXTO PRINCIPAL */
-/* ------------------------------------- */
-.logo, h2, .main-thread-post h3 {
-    position: relative;
-    /* Animación de glitch sutil */
-    animation: glitch-anim 5s infinite linear alternate; 
-    text-shadow: 0 0 5px var(--color-accent), 0 0 20px rgba(0, 255, 65, 0.5);
-}
 
-@keyframes glitch-anim {
-    0% { transform: translate(0); text-shadow: 0 0 5px var(--color-accent); }
-    20% { transform: translate(-2px, 2px); }
-    40% { transform: translate(-3px, -3px); text-shadow: 0 0 8px red; }
-    60% { transform: translate(3px, 3px); }
-    80% { transform: translate(1px, -1px); }
-    100% { transform: translate(0); text-shadow: 0 0 5px var(--color-accent); }
-}
-
-/* Efecto de sombra parpadeante en el marco */
 .monitor-frame {
-    /* ... (resto de estilos existentes) ... */
+    width: 95%;
+    max-width: 1000px;
+    margin: 40px auto;
+    border: 2px solid var(--color-accent);
+    box-shadow: 0 0 15px var(--color-accent), inset 0 0 15px var(--color-accent);
+    background-color: rgba(0, 0, 0, 0.95);
+    padding: 20px;
+    border-radius: 0; /* Sin bordes redondeados */
     animation: flicker 1s infinite alternate;
 }
 
 @keyframes flicker {
-    0% { box-shadow: 0 0 20px var(--color-accent), inset 0 0 20px var(--color-accent); opacity: 1; }
-    90% { box-shadow: 0 0 20px var(--color-accent), inset 0 0 20px var(--color-accent); opacity: 1; }
-    92% { box-shadow: 0 0 25px red, inset 0 0 25px red; opacity: 0.95; } /* Flash rojo */
-    95% { box-shadow: 0 0 15px var(--color-accent), inset 0 0 15px var(--color-accent); opacity: 1; }
-    100% { box-shadow: 0 0 20px var(--color-accent), inset 0 0 20px var(--color-accent); opacity: 1; }
+    0% { box-shadow: 0 0 15px var(--color-accent), inset 0 0 15px var(--color-accent); opacity: 1; }
+    90% { box-shadow: 0 0 15px var(--color-accent), inset 0 0 15px var(--color-accent); opacity: 1; }
+    92% { box-shadow: 0 0 20px red, inset 0 0 20px red; opacity: 0.98; }
+    95% { box-shadow: 0 0 10px var(--color-accent), inset 0 0 10px var(--color-accent); opacity: 1; }
+    100% { box-shadow: 0 0 15px var(--color-accent), inset 0 0 15px var(--color-accent); opacity: 1; }
 }
 
 /* ------------------------------------- */
-/* ESTILO DE TERMINAL/FORO */
+/* 03. TEXTO Y ELEMENTOS */
 /* ------------------------------------- */
 
-.monitor-frame {
-    width: 90%;
-    max-width: 1200px;
-    margin: 40px auto;
-    border: 3px solid var(--color-accent);
-    box-shadow: 0 0 20px var(--color-accent), inset 0 0 20px var(--color-accent);
-    background-color: rgba(0, 0, 0, 0.85); /* Semitransparente para ver el fondo */
-    padding: 20px;
-    border-radius: 5px;
+.glitch-text {
+    /* Animación de glitch sutil en el encabezado */
+    position: relative;
+    animation: glitch-anim 6s infinite linear alternate; 
+    text-shadow: 0 0 8px var(--color-accent);
 }
 
-.scanline {
-    /* Efecto de línea de escaneo sutil */
-    border-bottom: 2px solid var(--color-accent);
-    padding-bottom: 10px;
-    margin-bottom: 20px;
-    background: linear-gradient(rgba(18, 16, 16, 0.8) 50%, rgba(0, 0, 0, 0.2) 50%),
-                linear-gradient(90deg, rgba(255, 255, 255, 0.06), rgba(255, 255, 255, 0.06) 1px, transparent 1px);
-    background-size: 100% 4px, 3px 3px;
+@keyframes glitch-anim {
+    0% { transform: translate(0); }
+    10% { transform: translate(-1px, 1px); }
+    20% { transform: translate(1px, -1px); }
+    80% { transform: translate(-2px, -2px); }
+    100% { transform: translate(0); }
 }
 
 .logo {
     text-align: center;
-    font-size: 0.8em;
-    color: var(--color-text);
-    text-shadow: 0 0 5px var(--color-accent);
-    white-space: pre; /* Mantiene el formato ASCII ART */
+    font-size: 0.9em;
+    color: #fff;
+    text-shadow: 0 0 10px var(--color-text), 0 0 20px #fff;
+    white-space: pre; 
+    margin-bottom: 20px;
 }
 
 h2 {
     color: var(--color-accent);
-    border-left: 5px solid var(--color-accent);
+    border-left: 5px solid red; /* Toque de peligro */
     padding-left: 10px;
     text-transform: uppercase;
+    font-size: 1.2em;
 }
 
-/* Estilo para los contenedores de hilos y formularios */
 .forum-box {
     border: 1px dashed var(--color-accent);
     padding: 15px;
     margin-bottom: 25px;
+    background-color: rgba(0, 0, 0, 0.7);
 }
 
-/* Estilo de los formularios (inputs y textarea) */
-input[type="text"], textarea {
+input[type="text"], input[type="password"], textarea {
     width: calc(100% - 22px);
     padding: 10px;
     margin: 5px 0 15px 0;
-    background-color: #000;
+    background-color: #050505;
     border: 1px solid var(--color-accent);
     color: var(--color-text);
     font-family: var(--font-terminal);
     font-size: 1em;
     resize: vertical;
+    box-shadow: inset 0 0 5px var(--color-accent);
 }
 
-/* Estilo del botón */
 button {
     background-color: var(--color-accent);
     color: #000;
-    border: none;
+    border: 1px solid var(--color-text);
     padding: 10px 20px;
     text-transform: uppercase;
     font-weight: bold;
     cursor: pointer;
-    transition: background-color 0.3s, color 0.3s;
+    transition: all 0.2s;
 }
 
 button:hover {
-    background-color: var(--color-text);
-    color: #000;
-    box-shadow: 0 0 10px var(--color-text);
+    background-color: #000;
+    color: var(--color-text);
+    box-shadow: 0 0 15px var(--color-text);
 }
 
-/* Estilo de los hilos */
-.thread-post {
+.back-button {
+    background-color: #333;
+    color: var(--color-text);
     border: 1px solid var(--color-text);
-    padding: 15px;
-    margin-bottom: 10px;
-    background-color: rgba(0, 0, 0, 0.5);
-    cursor: pointer; /* Para indicar que se puede hacer clic para ver respuestas */
+    box-shadow: none;
 }
 
-.thread-post h3 {
-    margin: 0 0 5px 0;
-    color: var(--color-accent);
-    text-shadow: 0 0 2px var(--color-accent);
+/* Hilos y Respuestas */
+.thread-post {
+    border-bottom: 1px dashed var(--color-text);
+    padding: 10px 0;
+    margin-bottom: 10px;
+    cursor: pointer; 
+}
+.thread-post:hover {
+    background-color: rgba(0, 255, 65, 0.1);
+}
+
+.reply-post {
+    border-left: 3px solid var(--color-accent);
+    padding-left: 10px;
+    margin-bottom: 10px;
+    background-color: rgba(0, 0, 0, 0.4);
 }
 
 .thread-meta {
-    font-size: 0.8em;
+    font-size: 0.85em;
     color: #999;
-    margin-bottom: 10px;
-
+    margin-top: 5px;
 }
-
-/* Estilos para el panel de administración */
-.admin-panel {
-    border: 2px dashed red;
-    box-shadow: 0 0 15px red;
-    margin-top: 30px;
-}
-
-.delete-button {
-    background-color: red;
-    color: white;
-    margin-top: 10px;
-}
-
-.delete-button:hover {
-    background-color: darkred;
-    box-shadow: 0 0 10px red;
-}
-
