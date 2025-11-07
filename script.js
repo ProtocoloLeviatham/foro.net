@@ -140,4 +140,75 @@ function displayThread(threadId, threadData) {
     // Ejemplo de cómo cargar respuestas:
     // db.collection("threads").doc(threadId).collection("replies").orderBy('timestamp', 'asc').get().then(...)
 
+    // --- FUNCIONES DE ADMINISTRACIÓN ---
+
+/**
+ * Activa/Desactiva las herramientas de borrado tras verificar la clave.
+ */
+function toggleAdminMode() {
+    const keyInput = document.getElementById('admin-key-input');
+    const controlsStatus = document.getElementById('admin-controls-status');
+    const adminButton = document.getElementById('admin-toggle-button');
+
+    if (keyInput.type === 'text') { // Si ya está activo, desactivar
+        keyInput.type = 'password';
+        keyInput.value = '';
+        controlsStatus.style.display = 'none';
+        adminButton.textContent = 'ACTIVAR MODO';
+        console.log("> MODO ADMIN DESACTIVADO.");
+        return;
+    }
+
+    if (keyInput.value === ADMIN_KEY) {
+        keyInput.type = 'text'; // Cambia a texto para que el admin pueda ver la clave
+        controlsStatus.style.display = 'block';
+        adminButton.textContent = 'DESACTIVAR MODO';
+        console.log("> MODO ADMIN ACTIVADO CON ÉXITO.");
+    } else {
+        alert("CLAVE DE ACCESO DENEGADA. [Error: AUTH_FAIL]");
+        keyInput.value = '';
+    }
 }
+
+/**
+ * Borra un hilo o una respuesta específica de Firebase.
+ * @param {string} type - 'thread' o 'reply'.
+ */
+function deletePost(type) {
+    let docRef;
+    let successMessage;
+
+    if (type === 'thread') {
+        const threadId = document.getElementById('thread-id-to-delete').value.trim();
+        if (!threadId) { alert("ERROR: ID de hilo requerido."); return; }
+        docRef = threadsCollection.doc(threadId);
+        successMessage = `Hilo [${threadId}] BORRADO.`;
+
+    } else if (type === 'reply') {
+        const replyId = document.getElementById('reply-id-to-delete').value.trim();
+        const parentThreadId = document.getElementById('parent-thread-id').value.trim();
+        if (!replyId || !parentThreadId) { alert("ERROR: IDs de respuesta e hilo padre requeridos."); return; }
+
+        docRef = threadsCollection.doc(parentThreadId).collection('replies').doc(replyId);
+        successMessage = `Respuesta [${replyId}] del hilo [${parentThreadId}] BORRADA.`;
+
+        // Opcional: Desincrementar el replyCount del hilo padre (si el borrado es exitoso)
+    }
+
+    if (docRef) {
+        docRef.delete().then(() => {
+            alert(successMessage + " REINICIANDO CONEXIÓN.");
+            console.warn(`> ${successMessage}`);
+            // Limpiar campos y forzar una recarga visual
+            document.getElementById('thread-id-to-delete').value = '';
+            document.getElementById('reply-id-to-delete').value = '';
+            document.getElementById('parent-thread-id').value = '';
+            showListView(); // Vuelve a la vista de lista
+        }).catch((error) => {
+            console.error("ERROR AL BORRAR DOCUMENTO: ", error);
+            alert("ERROR: No se pudo borrar el post. Revisa los IDs y las reglas de Firebase.");
+        });
+    }
+}
+}
+
