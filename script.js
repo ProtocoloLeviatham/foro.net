@@ -1,5 +1,6 @@
 // --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
+    // [ ... Tus credenciales de Firebase ... ]
     apiKey: "AIzaSyBZCPk8qp39BoQ99qLfoQlT6pabnqaqinY",
     authDomain: "foro-513fa.firebaseapp.com",
     projectId: "foro-513fa",
@@ -13,26 +14,32 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const threadsCollection = db.collection("threads");
 
+// Intentar activar persistencia (Mejor gestión de caché en móviles)
+db.enablePersistence().catch((err) => {
+    // Silenciar errores de persistencia en caso de múltiples pestañas o navegadores no compatibles
+    if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
+        console.error("Error al activar la persistencia:", err);
+    }
+});
+
 // Referencias a elementos de la UI
-const threadListView = document.getElementById('thread-list-view');
-const threadDetailView = document.getElementById('thread-detail-view');
 const preloader = document.getElementById('preloader');
 const contentWrapper = document.getElementById('content-wrapper');
 const rulesModal = document.getElementById('rules-modal');
-const submitThreadBtn = document.getElementById('submit-thread-btn');
 const postsContainer = document.getElementById('posts-container');
 const repliesContainer = document.getElementById('replies-container');
-
-// Variable global para mantener el ID del hilo actual
-let currentThreadId = null;
+const threadListView = document.getElementById('thread-list-view');
+const threadDetailView = document.getElementById('thread-detail-view');
+const topThreadsContainer = document.getElementById('top-threads-container');
 
 // -----------------------------------------------------
-// 01. GESTIÓN DE VISTAS Y UTILIDADES
+// 01. UTILIDADES Y VISTAS
 // -----------------------------------------------------
 
 function formatTimestamp(timestamp) {
-    if (!timestamp) return 'Timestamp no disponible';
+    if (!timestamp || !timestamp.toDate) return 'Timestamp no disponible';
     const date = timestamp.toDate();
+    if (isNaN(date)) return 'Fecha inválida';
     return date.toLocaleString('es-ES', { 
         year: 'numeric', 
         month: '2-digit', 
@@ -53,11 +60,10 @@ function showListView() {
 }
 
 // -----------------------------------------------------
-// 02. ANIMACIÓN DE INICIO (PRELOADER)
+// 02. ANIMACIÓN DE INICIO Y LOGS
 // -----------------------------------------------------
 
 function initPreloader() {
-    // 7.5s es el tiempo total del tipeo en el CSS
     const animationDuration = 7500; 
 
     setTimeout(() => {
@@ -66,50 +72,14 @@ function initPreloader() {
             preloader.style.display = 'none';
             contentWrapper.classList.remove('hidden');
             
-            // Mostrar modal de reglas y cargar datos después de la intro
             rulesModal.style.display = 'flex';
             loadThreads(); 
+            loadTopThreads(); // Cargar ranking al inicio
         }, 500);
     }, animationDuration);
 }
 
-// Inicializar Canvas (Efecto Matrix de fondo)
-function initMatrixCanvas() {
-    const canvas = document.getElementById('matrix-bg');
-    const ctx = canvas.getContext('2d');
-    canvas.width = window.innerWidth;
-    canvas.height = window.innerHeight;
-
-    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890@#$%^&*()_+=-[]{};:<>,./?|`~';
-    const font_size = 10;
-    const columns = canvas.width / font_size;
-    const drops = [];
-
-    for (let x = 0; x < columns; x++) {
-        drops[x] = 1;
-    }
-
-    function draw() {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-
-        ctx.fillStyle = '#0F0'; 
-        ctx.font = font_size + 'px monospace';
-
-        for (let i = 0; i < drops.length; i++) {
-            const text = characters[Math.floor(Math.random() * characters.length)];
-            ctx.fillText(text, i * font_size, drops[i] * font_size);
-
-            if (drops[i] * font_size > canvas.height && Math.random() > 0.975) {
-                drops[i] = 0;
-            }
-            drops[i]++;
-        }
-    }
-    setInterval(draw, 33);
-}
-
-// Generar logs aleatorios para los sidebars
+// Generar logs aleatorios (mantener el efecto)
 function generateRandomLog(id) {
     const logElement = document.getElementById(id);
     const lines = 100;
@@ -121,16 +91,47 @@ function generateRandomLog(id) {
         const code = Math.random().toString(16).substring(2, 8).toUpperCase();
         logContent += `${type} ${code} ${Math.random() < 0.2 ? 'ACCESS DENIED' : 'OK'} - ${Math.random().toString(36).substring(2, 10)}\n`;
     }
-    logElement.textContent = logContent + logContent; // Duplicar para el scroll infinito
+    logElement.textContent = logContent + logContent; 
 }
 
+
 // -----------------------------------------------------
-// 03. PUBLICACIÓN Y GESTIÓN DE HILOS
+// 03. FUNCIONES DE INTERACCIÓN (LIKES)
+// -----------------------------------------------------
+
+function addLike(threadId) {
+    // Usamos el ID del dispositivo o una ID de sesión para evitar spam masivo de likes
+    const userId = localStorage.getItem('user-id') || document.getElementById('user-id-display').textContent;
+    const likesKey = `liked_${threadId}`;
+    
+    if (localStorage.getItem(likesKey) === 'true') {
+        alert("Ya has dado like a esta transmisión. [Code: 409]");
+        return;
+    }
+
+    threadsCollection.doc(threadId).update({
+        likes: firebase.firestore.FieldValue.increment(1) // Incrementar campo 'likes'
+    })
+    .then(() => {
+        localStorage.setItem(likesKey, 'true'); // Marcar como gustado
+        alert("Like agregado. Gracias por tu feedback. [ACK/200]");
+        // Opcional: Deshabilitar el botón de like en la interfaz para el usuario
+    })
+    .catch((error) => {
+        console.error("Error al dar like:", error);
+        alert("Error al procesar el like. [Code: 500]");
+    });
+}
+
+
+// -----------------------------------------------------
+// 04. GESTIÓN DE HILOS Y RESPUESTAS (FIREBASE)
 // -----------------------------------------------------
 
 function publishThread() {
     const authorInput = document.getElementById('thread-author');
     const contentInput = document.getElementById('thread-content');
+    const submitThreadBtn = document.getElementById('submit-thread-btn');
 
     const author = authorInput.value.trim() || 'Anonimo Cifrado'; 
     const content = contentInput.value.trim();
@@ -147,10 +148,10 @@ function publishThread() {
         author: author,
         content: content,
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        replyCount: 0 
+        replyCount: 0,
+        likes: 0 // Nuevo campo inicial
     })
-    .then((docRef) => {
-        console.log(`> Transmisión enviada. ID: ${docRef.id}`);
+    .then(() => {
         contentInput.value = ''; 
         authorInput.value = '';
         alert("Transmisión Enviada [ACK/200]");
@@ -189,12 +190,11 @@ function publishReply(threadId) {
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
     })
     .then(() => {
-        // Incrementa el contador del hilo padre
+        // ✅ CORRECCIÓN CLAVE: Incrementar el contador de respuestas del hilo padre
         threadsCollection.doc(threadId).update({
             replyCount: firebase.firestore.FieldValue.increment(1)
         });
         
-        console.log(`> Respuesta enviada a Hilo: ${threadId}`);
         contentInput.value = ''; 
     })
     .catch((error) => {
@@ -207,10 +207,10 @@ function publishReply(threadId) {
     });
 }
 
-
 function loadThreads() {
     postsContainer.innerHTML = '<p class="text-gray-600">Buscando Hilos de Datos...</p>';
 
+    // Listener en tiempo real para la lista principal
     threadsCollection.orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
         postsContainer.innerHTML = '';
         
@@ -218,21 +218,26 @@ function loadThreads() {
             const threadData = doc.data();
             const threadId = doc.id;
             const timestampStr = formatTimestamp(threadData.timestamp);
+            const likes = threadData.likes || 0; // Mostrar likes
 
             const threadElement = document.createElement('div');
-            threadElement.className = 'p-3 border border-dashed border-gray-700 hover:border-green-500 cursor-pointer transition';
+            threadElement.className = 'p-3 border border-dashed border-gray-700 hover:border-green-500 transition';
             threadElement.innerHTML = `
                 <div class="flex justify-between text-sm mb-1">
                     <span class="text-red-400 font-bold">[ THREAD_ID: ${threadId.substring(0, 6)}... ]</span>
                     <span class="text-gray-500">${timestampStr}</span>
                 </div>
-                <h3 class="text-white text-md font-bold">${threadData.content.substring(0, 100)}${threadData.content.length > 100 ? '...' : ''}</h3>
-                <div class="text-xs mt-1 text-green-400">
-                    Operador: ${threadData.author} | Respuestas: ${threadData.replyCount || 0}
+                <h3 class="text-white text-md font-bold cursor-pointer hover:underline">${threadData.content.substring(0, 100)}${threadData.content.length > 100 ? '...' : ''}</h3>
+                <div class="flex justify-between items-center text-xs mt-2">
+                    <span class="text-green-400">Operador: ${threadData.author} | Respuestas: ${threadData.replyCount || 0}</span>
+                    <button class="text-red-500 hover:text-white transition" onclick="addLike('${threadId}')">
+                        <span data-lucide="heart" class="w-4 h-4 inline-block mr-1"></span> ${likes}
+                    </button>
                 </div>
             `;
             
-            threadElement.addEventListener('click', () => {
+            // Añadir evento al título para ir al detalle
+            threadElement.querySelector('h3').addEventListener('click', () => {
                 displayThread(threadId, threadData);
             });
             
@@ -242,26 +247,65 @@ function loadThreads() {
         if (snapshot.empty) {
             postsContainer.innerHTML = '<p class="text-center text-gray-600">-- DIRECTORIO VACÍO. INICIE TRANSMISIÓN --</p>';
         }
-    }, (error) => {
-        console.error("Error al escuchar hilos:", error);
-        postsContainer.innerHTML = '<p class="text-center text-error">ERROR DE CONEXIÓN. Código: 503</p>';
+        lucide.createIcons(); // Vuelve a renderizar los iconos
     });
 }
 
+function loadTopThreads() {
+    topThreadsContainer.innerHTML = '<p class="text-gray-600">Buscando ranking...</p>';
+
+    // Consulta para los 10 hilos con más likes, ordenados descendentemente
+    threadsCollection.orderBy('likes', 'desc').limit(10).onSnapshot((snapshot) => {
+        topThreadsContainer.innerHTML = '';
+        
+        if (snapshot.empty) {
+            topThreadsContainer.innerHTML = '<p class="text-gray-600">No hay transmisiones rankeadas aún.</p>';
+            return;
+        }
+
+        snapshot.forEach((doc, index) => {
+            const threadData = doc.data();
+            const threadId = doc.id;
+            const likes = threadData.likes || 0;
+
+            const threadElement = document.createElement('div');
+            threadElement.className = 'flex justify-between items-center p-2 border-b border-gray-800 cursor-pointer hover:bg-gray-900 transition';
+            threadElement.innerHTML = `
+                <span class="text-red-400 font-bold w-4">${index + 1}.</span>
+                <span class="truncate text-green-400 flex-1 ml-2" onclick="displayThread('${threadId}', ${JSON.stringify(threadData).replace(/'/g, "\\'")})">
+                    ${threadData.content.substring(0, 30)}...
+                </span>
+                <span class="text-red-500 text-xs ml-2">
+                    <span data-lucide="heart" class="w-3 h-3 inline-block"></span> ${likes}
+                </span>
+            `;
+            topThreadsContainer.appendChild(threadElement);
+        });
+        lucide.createIcons();
+    }, (error) => {
+        console.error("Error al cargar ranking:", error);
+        topThreadsContainer.innerHTML = '<p class="text-center text-error">ERROR: No se pudo cargar el ranking.</p>';
+    });
+}
+
+
 function displayThread(threadId, threadData) {
-    currentThreadId = threadId;
     showDetailView();
 
     const threadContentDiv = document.getElementById('current-thread-content');
     const replyButton = document.getElementById('reply-button');
     const timestampStr = formatTimestamp(threadData.timestamp);
-    
-    // Contenido del hilo principal
+    const likes = threadData.likes || 0;
+
+    // Contenido del hilo principal, ahora incluye likes y un botón para dar like
     threadContentDiv.innerHTML = `
         <h3 class="text-xl text-red-400 mb-2 font-bold">[ HILO CIFRADO: ${threadId} ]</h3>
         <p class="mb-4">${threadData.content}</p>
-        <div class="text-xs text-gray-500">
-            Operador: ${threadData.author} | Fecha/Hora: ${timestampStr}
+        <div class="flex justify-between items-center text-xs text-gray-500 mt-4">
+            <span>Operador: ${threadData.author} | Fecha/Hora: ${timestampStr}</span>
+            <button class="text-red-500 hover:text-white transition hacker-btn" onclick="addLike('${threadId}')">
+                <span data-lucide="heart" class="w-4 h-4 inline-block mr-1"></span> LIKE (${likes})
+            </button>
         </div>
     `;
 
@@ -270,6 +314,7 @@ function displayThread(threadId, threadData) {
 
     // Cargar respuestas
     loadReplies(threadId);
+    lucide.createIcons();
 }
 
 function loadReplies(threadId) {
@@ -299,24 +344,21 @@ function loadReplies(threadId) {
             repliesContainer.innerHTML = '<p class="text-center text-gray-600">-- SUB-DIRECTORIO VACÍO --</p>';
         }
 
-    }, (error) => {
-        console.error("Error al escuchar respuestas:", error);
-        repliesContainer.innerHTML = '<p class="text-center text-error">ERROR DE LECTURA DE RESPUESTAS.</p>';
     });
 }
 
 // -----------------------------------------------------
-// 04. INICIALIZACIÓN FINAL
+// 05. INICIALIZACIÓN FINAL
 // -----------------------------------------------------
 
 function initApp() {
-    // Inicializar efectos visuales
-    initMatrixCanvas();
+    // Generar ID anónimo para el usuario (simulación)
+    const userId = 'Cipher_' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    document.getElementById('user-id-display').textContent = userId;
+    localStorage.setItem('user-id', userId); // Guardar para gestión de likes
+
     generateRandomLog('log-left');
     generateRandomLog('log-right');
-    
-    // Generar ID anónimo para el usuario (simulación)
-    document.getElementById('user-id-display').textContent = 'Cipher_' + Math.random().toString(36).substring(2, 8).toUpperCase();
     
     // Configurar modal de reglas
     document.getElementById('close-rules-btn').addEventListener('click', () => {
