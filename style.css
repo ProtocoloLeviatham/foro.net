@@ -1,423 +1,277 @@
-/* --- Variables Siniestras --- */
-:root {
-    --bg-dark: #030305; /* Casi negro absoluto */
-    --neon-green: #00ff41; /* Verde neón para el sistema */
-    --neon-blue: #00ffff; /* Azul cian para el énfasis */
-    --glitch-red: #ff004c; /* Rojo para fallos */
-    --glitch-purple: #8a00ff; /* Púrpura para distorsión */
-    --text-light: #cccccc; /* Gris claro para texto legible */
-
-    --terminal-font: 'VT323', monospace; /* Fuente de terminal retro */
-    --glitch-font: 'Press Start 2P', cursive; /* Fuente pixelada para glitch */
-}
-
-/* --- Globales y Reset --- */
-*, *::before, *::after {
-    box-sizing: border-box;
-}
+/* -------------------------------------------------------------------------
+   DARK WEB / HACKING AESTHETIC STYLES
+   Paleta: Negro Oscuro (#101419) y Neón Verde (#39FF14)
+   Fuente: Roboto Mono (simulando una terminal)
+------------------------------------------------------------------------- */
 
 body {
-    background-color: var(--bg-dark);
-    color: var(--text-light);
-    font-family: var(--terminal-font);
-    margin: 0;
-    padding: 0;
-    line-height: 1.6;
-    min-height: 100vh;
-    overflow-x: hidden;
-    position: relative; /* Necesario para los overlays */
-}
-
-/* --- Scrollbar Estilizado (Webkit) --- */
-::-webkit-scrollbar {
-    width: 8px;
-    background: var(--bg-dark);
-}
-::-webkit-scrollbar-thumb {
-    background: var(--neon-green);
-    border-radius: 5px;
-}
-::-webkit-scrollbar-track {
-    background: #0d0d12;
-}
-
-/* --- Fondo Animado y Estática --- */
-#background-canvas {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    z-index: -2; /* Detrás de la estática */
-    opacity: 0.1; /* Sutil */
-}
-
-#static-overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: repeating-linear-gradient(
-        transparent 0%,
-        rgba(0, 0, 0, 0.5) 50%,
-        transparent 100%
-    ); /* Scanlines sutiles */
-    opacity: 0.05; /* Muy sutil */
-    pointer-events: none;
-    z-index: -1;
-    animation: static-flicker 10s infinite alternate;
-}
-
-@keyframes static-flicker {
-    0%, 100% { opacity: 0.05; }
-    5% { opacity: 0.08; }
-    10% { opacity: 0.03; }
-    15% { opacity: 0.1; }
-    20% { opacity: 0.06; }
-    /* Más puntos para un efecto de ruido irregular */
-    90% { opacity: 0.04; }
-}
-
-/* --- Efecto Glitch Aleatorio Global --- */
-.glitch-effect {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background-image: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="10" height="10"><filter id="noise"><feTurbulence type="fractalNoise" baseFrequency="0.9" numOctaves="1" stitchTiles="stitch"/></filter><rect width="100%" height="100%" filter="url(#noise)" opacity="0.3"/></svg>');
-    background-size: 100% 100%;
-    opacity: 0; /* Por defecto invisible */
-    pointer-events: none;
-    z-index: 9999;
-    animation: glitch-flicker-global 0.1s infinite alternate; /* Animación rápida para el efecto */
-}
-
-@keyframes glitch-flicker-global {
-    0% { opacity: 0; transform: translate(0,0); }
-    50% { opacity: 0.2; transform: translate(1px, -1px); }
-    100% { opacity: 0; transform: translate(-1px, 1px); }
-}
-
-
-/* --- Contenido Principal --- */
-header, main, footer {
-    max-width: 900px;
-    margin: 0 auto;
+    background-color: #101419; /* Negro muy oscuro */
+    color: #39FF14; /* Neón Verde */
+    font-family: 'Roboto Mono', monospace;
     padding: 20px;
-    position: relative; /* Para que esté por encima de los fondos */
-    z-index: 1;
+    overflow-x: hidden;
+    /* Efecto CRT Scanline (opcional, pero genial) */
+    background-image: linear-gradient(rgba(25, 30, 25, 0.4) 1px, transparent 1px);
+    background-size: 100% 4px;
 }
 
-/* --- Títulos --- */
-h1 {
-    color: var(--neon-blue);
-    text-shadow: 0 0 8px var(--neon-blue), 0 0 15px var(--neon-blue), 0 0 20px rgba(0,255,255,0.4);
-    text-align: center;
-    font-size: 2.8em;
-    border-bottom: 2px dashed var(--neon-blue);
-    padding-bottom: 10px;
-    margin-bottom: 0.8em;
-    font-family: var(--glitch-font); /* Título principal con fuente pixelada */
+/* Contenedor principal para centrar y limitar el ancho */
+.terminal-container {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 1rem;
 }
 
-.subtitle {
-    text-align: center;
-    color: #888;
-    font-size: 1em;
-    margin-top: -1em;
-    margin-bottom: 2em;
-}
+/* ------------------ EFECTOS DE DARK WEB / GLITCH ------------------ */
 
-h2 {
-    color: var(--neon-green);
-    font-size: 1.5em;
-    margin-top: 30px;
-    margin-bottom: 15px;
-    border-bottom: 1px dotted var(--neon-green);
-    padding-bottom: 5px;
-}
-.section-title {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-}
-#total-posts-count {
-    font-size: 0.8em;
-    color: var(--glitch-red);
-    text-shadow: 0 0 3px var(--glitch-red);
-}
-
-/* --- Logo LEVIATHAN Glitch --- */
-#leviathan-logo {
-    font-family: var(--terminal-font);
-    font-size: 1.2em;
-    text-align: center;
-    color: var(--neon-green);
-    margin-bottom: 1em;
-    position: relative;
-    padding: 10px;
-    white-space: pre;
-    line-height: 1;
-    text-shadow: 0 0 5px var(--neon-green);
-    animation: logo-flicker 2s infinite alternate steps(1); /* Parpadeo del glow */
-}
-
-#leviathan-logo::before,
-#leviathan-logo::after {
-    content: attr(data-text); /* El texto del pre se usa para el glitch */
-    position: absolute;
+/* 1. Glitch Overlay (Efecto de estática constante) */
+#glitch-overlay {
+    position: fixed;
     top: 0;
     left: 0;
     width: 100%;
     height: 100%;
-    overflow: hidden;
-    color: var(--glitch-red);
-    text-shadow: none;
-    clip: rect(0,0,0,0);
+    pointer-events: none; /* Permite hacer clic a través de él */
+    z-index: 999;
+    opacity: 0.05; /* Muy sutil */
+    background-image: repeating-linear-gradient(
+        0deg,
+        rgba(0, 0, 0, 0.5),
+        rgba(0, 0, 0, 0.8) 1px,
+        rgba(0, 0, 0, 0.2) 2px
+    );
+    animation: scanline-move 6s linear infinite;
 }
 
-#leviathan-logo::before {
-    left: 2px;
-    text-shadow: -1px 0 var(--glitch-red);
-    animation: glitch-anim-1 2s infinite alternate-reverse;
+@keyframes scanline-move {
+    0% { background-position: 0 0; }
+    100% { background-position: 0 100vh; }
 }
 
-#leviathan-logo::after {
-    left: -2px;
-    text-shadow: 1px 0 var(--glitch-blue);
-    animation: glitch-anim-2 3s infinite alternate-reverse;
-}
-
-@keyframes logo-flicker {
-    0%, 100% { text-shadow: 0 0 5px var(--neon-green); }
-    50% { text-shadow: 0 0 10px var(--neon-green), 0 0 15px rgba(0,255,65,0.3); }
-}
-
-@keyframes glitch-anim-1 {
-    0% { clip: rect(21px, 9999px, 86px, 0); transform: skew(0.5deg); }
-    10% { clip: rect(59px, 9999px, 12px, 0); transform: skew(-0.8deg); }
-    20% { clip: rect(64px, 9999px, 98px, 0); transform: skew(1.2deg); }
-    /* Más pasos para un glitch irregular */
-    90% { clip: rect(10px, 9999px, 45px, 0); transform: skew(-0.3deg); }
-    100% { clip: rect(70px, 9999px, 30px, 0); transform: skew(0.7deg); }
-}
-
-@keyframes glitch-anim-2 {
-    0% { clip: rect(40px, 9999px, 70px, 0); transform: skew(-0.3deg); }
-    15% { clip: rect(80px, 9999px, 20px, 0); transform: skew(0.6deg); }
-    30% { clip: rect(10px, 9999px, 90px, 0); transform: skew(-0.9deg); }
-    /* Más pasos */
-    85% { clip: rect(50px, 9999px, 60px, 0); transform: skew(0.4deg); }
-    100% { clip: rect(30px, 9999px, 80px, 0); transform: skew(-0.7deg); }
-}
-
-.tagline {
-    text-align: center;
-    color: var(--text-light);
-    font-size: 0.9em;
-    margin-top: 5px;
-    margin-bottom: 5px;
+/* 2. Glitch Text (Título principal) */
+.glitch {
+    font-size: 2.5rem;
+    font-weight: 700;
+    line-height: 1.2;
     position: relative;
+    text-shadow: 0 0 5px #39FF14, 0 0 10px #39FF14;
+    animation: glitch-anim 2s infinite alternate;
 }
 
-/* Efecto glitch para los taglines también */
-.glitch-text::before, .glitch-text::after {
+/* Sombra y repetición para el efecto glitch */
+.glitch::before,
+.glitch::after {
     content: attr(data-text);
     position: absolute;
-    top: 0;
     left: 0;
+    top: 0;
     width: 100%;
     height: 100%;
-    overflow: hidden;
-    color: var(--glitch-red);
-    text-shadow: none;
-    clip: rect(0,0,0,0);
-    opacity: 0;
-    animation: tagline-glitch 4s infinite linear alternate-reverse;
 }
 
-.glitch-text::after {
-    color: var(--glitch-purple);
-    animation-delay: 0.5s;
-    animation-duration: 3s;
+.glitch::before {
+    left: 2px;
+    text-shadow: -2px 0 #FF00FF; /* Magenta */
+    clip: rect(44px, 450px, 56px, 0);
+    animation: glitch-anim-before 3s infinite linear alternate-reverse;
 }
 
-@keyframes tagline-glitch {
-    0%, 100% { opacity: 0; transform: translate(0,0); }
-    10% { opacity: 0.8; transform: translate(-2px, 1px); }
-    20% { opacity: 0; }
-    30% { opacity: 0.6; transform: translate(1px, -2px); }
-    40% { opacity: 0; }
-    /* ... simula parpadeos y distorsiones breves */
-    90% { opacity: 0.7; transform: translate(-1px, 1px); }
+.glitch::after {
+    left: -2px;
+    text-shadow: -2px 0 #00FFFF; /* Cyan */
+    clip: rect(85px, 450px, 100px, 0);
+    animation: glitch-anim-after 4s infinite linear alternate;
 }
 
-
-/* --- Terminal Box --- */
-.terminal-box {
-    background-color: rgba(0, 50, 0, 0.1); /* Fondo muy oscuro, ligeramente verdoso */
-    border: 1px solid var(--neon-green);
-    box-shadow: 0 0 15px rgba(0, 255, 65, 0.3), inset 0 0 5px rgba(0, 255, 65, 0.1);
-    padding: 20px;
-    margin-bottom: 40px;
-    position: relative;
-    overflow: hidden;
-}
-.terminal-box::before { /* Esquinas del terminal */
-    content: '';
-    position: absolute;
-    width: 10px; height: 10px;
-    border: 2px solid var(--neon-green);
-    border-style: solid none none solid; /* Top-left */
-    top: -2px; left: -2px;
-}
-.terminal-box::after {
-    content: '';
-    position: absolute;
-    width: 10px; height: 10px;
-    border: 2px solid var(--neon-green);
-    border-style: none solid solid none; /* Bottom-right */
-    bottom: -2px; right: -2px;
+@keyframes glitch-anim {
+    0% { transform: translate(0); }
+    20% { transform: translate(-2px, 2px); }
+    40% { transform: translate(-2px, -2px); }
+    60% { transform: translate(2px, 2px); }
+    80% { transform: translate(2px, -2px); }
+    100% { transform: translate(0); }
 }
 
+@keyframes glitch-anim-before {
+    0% { clip: rect(27px, 9999px, 60px, 0); transform: skew(0.5deg); }
+    5% { clip: rect(61px, 9999px, 83px, 0); transform: skew(-0.5deg); }
+    10% { clip: rect(43px, 9999px, 64px, 0); transform: skew(0.3deg); }
+    /* Más pasos para un efecto de glitch complejo */
+}
 
-/* --- Formularios --- */
-textarea {
+@keyframes glitch-anim-after {
+    0% { clip: rect(47px, 9999px, 80px, 0); transform: skew(-0.7deg); }
+    10% { clip: rect(21px, 9999px, 48px, 0); transform: skew(0.2deg); }
+    20% { clip: rect(78px, 9999px, 91px, 0); transform: skew(-0.1deg); }
+    /* Más pasos */
+}
+
+/* 3. Efecto de línea de escaneo */
+.scan-line-effect {
+    height: 1px;
+    background-color: rgba(57, 255, 20, 0.4);
+    box-shadow: 0 0 4px #39FF14;
+    margin-top: 5px;
+}
+
+/* ------------------ PANELES Y CONTROLES ------------------ */
+
+.subtitle {
+    font-size: 0.9rem;
+    color: #2ECC71; /* Un verde un poco más claro */
+}
+
+.console-panel {
+    border: 1px solid #39FF14;
+    box-shadow: 0 0 15px rgba(57, 255, 20, 0.4);
+    padding: 1.5rem;
+    border-radius: 4px;
+    background-color: rgba(16, 20, 25, 0.8); /* Fondo semi-transparente */
+    backdrop-filter: blur(2px);
+}
+
+.panel-header {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #FF00FF; /* Magenta para destacar encabezados */
+    border-bottom: 1px dashed #39FF14;
+    padding-bottom: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+/* -- Inputs y Textareas -- */
+.console-input, .console-textarea {
     width: 100%;
-    background: #000;
-    border: 1px solid var(--neon-green);
-    color: var(--neon-green);
-    font-family: var(--terminal-font);
-    padding: 12px;
-    box-sizing: border-box;
-    resize: vertical;
+    padding: 0.5rem;
+    background-color: #101419;
+    border: 1px solid #39FF14;
+    color: #00FFFF; /* Cyan para el texto ingresado */
+    font-family: 'Roboto Mono', monospace;
+    font-size: 0.9rem;
+    box-shadow: inset 0 0 5px rgba(57, 255, 20, 0.5);
+    transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.console-input:focus, .console-textarea:focus {
     outline: none;
-    box-shadow: inset 0 0 8px rgba(0, 255, 65, 0.3);
-    font-size: 1em;
-}
-textarea:focus {
-    border-color: var(--neon-blue);
-    box-shadow: inset 0 0 8px rgba(0, 255, 255, 0.5), 0 0 5px var(--neon-blue);
+    border-color: #FF00FF; /* Borde Magenta al enfocar */
+    box-shadow: inset 0 0 8px rgba(255, 0, 255, 0.7), 0 0 10px rgba(57, 255, 20, 0.8);
 }
 
-.form-controls {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    margin-top: 10px;
-}
-.char-counter {
-    font-size: 0.8em;
-    color: var(--text-light);
-    opacity: 0.7;
+.input-label {
+    display: block;
+    margin-bottom: 0.25rem;
+    font-size: 0.8rem;
+    color: #39FF14;
 }
 
-.hack-button {
-    background: var(--neon-green);
-    color: var(--bg-dark);
+/* -- Botón -- */
+.console-button {
+    background-color: #39FF14;
+    color: #101419;
+    padding: 0.75rem 1.5rem;
+    font-weight: 700;
+    text-shadow: 1px 1px 0 #000;
     border: none;
-    padding: 12px 20px;
     cursor: pointer;
-    font-family: var(--glitch-font); /* Botones con fuente pixelada */
-    font-weight: bold;
+    transition: all 0.2s ease-in-out;
     letter-spacing: 1px;
-    transition: all 0.2s ease-out;
-    box-shadow: 0 0 8px var(--neon-green);
-    text-transform: uppercase;
+    box-shadow: 0 0 15px #39FF14;
 }
 
-.hack-button:hover:not(:disabled) {
-    background: var(--neon-blue);
-    color: #fff;
-    box-shadow: 0 0 15px var(--neon-blue), 0 0 20px rgba(0,255,255,0.4);
-    transform: translateY(-2px);
-}
-.hack-button:disabled {
-    background: #222;
-    color: #555;
-    cursor: not-allowed;
-    box-shadow: none;
+.console-button:hover {
+    background-color: #FF00FF; /* Magenta al pasar el ratón */
+    color: #101419;
+    box-shadow: 0 0 20px #FF00FF, 0 0 5px #39FF14 inset;
+    transform: scale(1.02);
 }
 
+/* ------------------ DISPLAY DE POSTS ------------------ */
 
-/* --- Estilo de los Posts Individuales --- */
-.post {
-    border: 1px dashed rgba(0, 255, 65, 0.3);
-    padding: 15px;
-    margin-top: 20px;
-    background-color: rgba(0, 0, 0, 0.4);
-    position: relative;
-    overflow: hidden; /* Para el overflow de texto largo */
-    box-shadow: 0 0 8px rgba(0, 255, 65, 0.1);
-}
-.post:hover {
-    border-color: var(--neon-blue);
-    box-shadow: 0 0 12px rgba(0, 255, 255, 0.2);
+.posts-container {
+    height: 500px;
+    overflow-y: auto;
+    padding: 10px;
+    border-top: 1px solid rgba(57, 255, 20, 0.3);
+    margin-top: 1rem;
 }
 
-.post-header {
+/* Estilo para cada post individual (El "Thread") */
+.post-card {
+    border-left: 3px solid #00FFFF; /* Barra lateral Cyan */
+    padding: 0.8rem 1rem;
+    margin-bottom: 1rem;
+    background-color: rgba(25, 30, 25, 0.6);
+    box-shadow: 0 0 5px rgba(57, 255, 20, 0.2);
+    border-radius: 2px;
+    animation: fade-in 0.5s ease-out;
+}
+
+@keyframes fade-in {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.post-meta {
+    font-size: 0.75rem;
+    color: #FF00FF; /* Magenta */
+    margin-bottom: 0.5rem;
     display: flex;
     justify-content: space-between;
-    font-size: 0.9em;
-    color: var(--neon-blue);
-    border-bottom: 1px dotted rgba(0, 255, 65, 0.2);
-    padding-bottom: 8px;
-    margin-bottom: 12px;
 }
 
-.post-author {
-    font-weight: bold;
-    color: var(--neon-blue);
-    text-shadow: 0 0 3px var(--neon-blue);
+.post-username {
+    font-weight: 700;
+    color: #FFC0CB; /* Rosa claro para usernames destacados */
 }
 
 .post-content {
-    white-space: pre-wrap; /* Mantiene saltos de línea y formato */
-    word-wrap: break-word; /* Rompe palabras largas */
-    color: var(--text-light);
-    font-size: 1em;
+    font-size: 1rem;
+    color: #FFFFFF; /* Blanco para mejor legibilidad del mensaje */
+    white-space: pre-wrap; /* Mantiene saltos de línea y espacios */
+    word-break: break-word;
+    margin-top: 5px;
+    line-height: 1.4;
 }
 
-.reply-link {
-    color: var(--neon-green);
-    text-decoration: none;
-    font-size: 0.8em;
-    cursor: pointer;
-    display: inline-block; /* Permite el margen y padding */
-    margin-top: 15px;
-    padding: 5px 8px;
-    border: 1px dotted var(--neon-green);
-    transition: all 0.2s;
-}
-.reply-link:hover {
-    background-color: var(--neon-green);
-    color: var(--bg-dark);
-    text-shadow: none;
-    box-shadow: 0 0 10px var(--neon-green);
+/* Estilos de Estado y Mensajes */
+.status-box {
+    padding: 1rem;
+    border-radius: 4px;
+    font-weight: 700;
+    border: 1px solid;
+    color: #39FF14;
+    border-color: #39FF14;
+    background-color: rgba(57, 255, 20, 0.1);
 }
 
-/* --- Paginación --- */
-.pagination-controls {
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    margin-top: 30px;
-    gap: 15px;
-}
-#page-info {
-    font-size: 1em;
-    color: var(--neon-blue);
-    text-shadow: 0 0 5px var(--neon-blue);
+.error-box {
+    color: #FF0000;
+    border-color: #FF0000;
+    background-color: rgba(255, 0, 0, 0.1);
 }
 
-/* --- Footer --- */
-footer {
-    text-align: center;
-    font-size: 0.7em;
-    color: #444;
-    padding-top: 30px;
-    border-top: 1px solid #222;
-    margin-top: 50px;
+.user-id-display {
+    padding: 0.5rem;
+    border: 1px dashed #FF00FF;
+    background-color: rgba(255, 0, 255, 0.05);
+    font-size: 0.8rem;
+    margin-bottom: 1rem;
 }
+
+
+/* ------------------ RESPONSIVIDAD ------------------ */
+
+@media (max-width: 768px) {
+    .glitch {
+        font-size: 1.5rem;
+        text-align: center;
+    }
+    .terminal-container {
+        padding: 0.5rem;
+    }
+    .posts-container {
+        height: 400px;
+    }
+}
+
