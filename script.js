@@ -31,10 +31,67 @@ const postsContainer = document.getElementById('posts-container');
 const repliesContainer = document.getElementById('replies-container');
 const topThreadsContainer = document.getElementById('top-threads-container');
 const submitThreadBtn = document.getElementById('submit-thread-btn');
+const matrixCanvas = document.getElementById('matrix-canvas');
 
 
 // -----------------------------------------------------
-// 01. GESTIÓN DE VISTAS Y UTILIDADES
+// 01. EFECTO MATRIX (PÚRPURA/MORADO)
+// -----------------------------------------------------
+function initMatrixEffect() {
+    if (!matrixCanvas) return;
+    
+    const ctx = matrixCanvas.getContext('2d');
+    
+    matrixCanvas.height = window.innerHeight;
+    matrixCanvas.width = window.innerWidth;
+    
+    const chinese = '0123456789ABCDEF';
+    const font_size = 10;
+    const columns = matrixCanvas.width / font_size;
+    const drops = [];
+    
+    for (let x = 0; x < columns; x++) {
+        drops[x] = 1;
+    }
+    
+    function draw() {
+        // Fondo negro con opacidad para el efecto de rastro
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+        
+        // Estilo de texto: Morado vibrante
+        ctx.fillStyle = '#8A2BE2'; // Morado
+        ctx.font = font_size + 'px monospace';
+        
+        for (let i = 0; i < drops.length; i++) {
+            // El carácter aleatorio
+            const text = chinese[Math.floor(Math.random() * chinese.length)];
+            
+            // Dibujar el texto
+            ctx.fillText(text, i * font_size, drops[i] * font_size);
+            
+            // Si la gota ha caído fuera de la pantalla
+            if (drops[i] * font_size > matrixCanvas.height && Math.random() > 0.975) {
+                drops[i] = 0; // Reiniciar
+            }
+            
+            // Incrementar la coordenada Y
+            drops[i]++;
+        }
+    }
+    
+    // Intervalo de actualización (más rápido para un efecto intenso)
+    return setInterval(draw, 33);
+}
+
+// Iniciar el efecto Matrix
+window.addEventListener('resize', () => {
+    matrixCanvas.height = window.innerHeight;
+    matrixCanvas.width = window.innerWidth;
+});
+
+// -----------------------------------------------------
+// 02. GESTIÓN DE VISTAS Y UTILIDADES
 // -----------------------------------------------------
 
 function formatTimestamp(timestamp) {
@@ -56,81 +113,38 @@ function showDetailView(threadId) {
     threadListView.style.display = 'none';
     rankingView.style.display = 'none';
     threadDetailView.style.display = 'block';
-    // Se asegura de que la URL refleje el hilo (opcional, pero útil para historial)
-    // window.history.pushState(null, '', `#thread-${threadId}`);
 }
 
 function showRankingView() {
     threadListView.style.display = 'none';
     threadDetailView.style.display = 'none';
     rankingView.style.display = 'block';
-    loadTopThreads();
+    loadTopThreadsByReplies(); // Cargar ranking por comentarios
 }
 
 // -----------------------------------------------------
-// 02. ANIMACIÓN DE INICIO (CORREGIDA)
+// 03. ANIMACIÓN DE INICIO (CORREGIDA Y PULIDA)
 // -----------------------------------------------------
 
 function initPreloader() {
-    // Calcular el tiempo total de la animación de tipeo (8.5s del último delay + 0.5s de buffer)
-    const animationDuration = 9000; 
+    // 9.5 segundos es la duración total del tipeo
+    const animationDuration = 9500; 
 
     setTimeout(() => {
-        // Iniciar el desvanecimiento después de que todas las líneas se han escrito
         preloader.style.opacity = '0';
         
         setTimeout(() => {
-            // Ocultar el preloader y mostrar el contenido
             preloader.style.display = 'none';
-            contentWrapper.classList.remove('hidden');
-            rulesModal.style.display = 'flex'; // Mostrar Modal de Reglas
+            // Al terminar la carga, mostrar el modal de reglas para la aceptación forzosa
+            rulesModal.style.display = 'flex'; 
             loadThreads(); 
         }, 1000); // 1 segundo para el desvanecimiento
     }, animationDuration);
 }
 
-// -----------------------------------------------------
-// 03. FUNCIONES DE INTERACCIÓN (LIKES/BADGES)
-// -----------------------------------------------------
-
-function addLike(threadId, buttonElement) {
-    const likesKey = `liked_${threadId}`;
-    
-    // Verificación de doble like (primero en la interfaz)
-    if (localStorage.getItem(likesKey) === 'true') {
-        console.warn("Ya se otorgó Badge. Intento bloqueado localmente.");
-        return; // Salir inmediatamente si ya votó
-    }
-
-    // Deshabilitar el botón inmediatamente
-    buttonElement.disabled = true;
-    buttonElement.style.opacity = '0.5';
-
-    threadsCollection.doc(threadId).update({
-        likes: firebase.firestore.FieldValue.increment(1)
-    })
-    .then(() => {
-        localStorage.setItem(likesKey, 'true');
-        
-        // Efecto visual de Badge otorgado
-        buttonElement.classList.add('liked-active');
-        buttonElement.style.opacity = '1';
-        
-        console.log(`Badge otorgado a ${threadId}.`);
-    })
-    .catch((error) => {
-        console.error("ERROR CRÍTICO AL PROCESAR BADGE (LIKE):", error);
-        alert("ERROR: El servidor de Badges falló. Revise reglas de seguridad. [Code: 500]");
-        
-        // Si falla, re-habilitamos el botón para permitir reintento (aunque no debería ocurrir con reglas correctas)
-        buttonElement.disabled = false; 
-        buttonElement.style.opacity = '1';
-    });
-}
-
 
 // -----------------------------------------------------
-// 04. GESTIÓN DE DATOS (FIREBASE)
+// 04. GESTIÓN DE DATOS (FIREBASE) - LIKES ELIMINADOS
 // -----------------------------------------------------
 
 function publishThread() {
@@ -140,8 +154,8 @@ function publishThread() {
     const author = authorInput.value.trim() || 'Anonimo Cifrado'; 
     const content = contentInput.value.trim();
 
-    if (content.length < 10) {
-        alert("ERROR: Longitud mínima de 10 caracteres. [Code: 400]");
+    if (content.length < 15 || content.length > 500) {
+        alert("ERROR: El hilo debe tener entre 15 y 500 caracteres. [Code: 400]");
         return;
     }
 
@@ -153,7 +167,7 @@ function publishThread() {
         content: content,
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
         replyCount: 0,
-        likes: 0
+        // Eliminado: likes: 0
     })
     .then(() => {
         contentInput.value = ''; 
@@ -162,7 +176,7 @@ function publishThread() {
     })
     .catch((error) => {
         console.error("> ERROR DE ESCRITURA:", error);
-        alert("ERROR: Fallo de escritura. Verificar estado de Firebase. [Code: 503]");
+        alert("ERROR: Fallo de escritura. Verificar Reglas de Firebase. [Code: 503]");
     })
     .finally(() => {
         submitThreadBtn.disabled = false;
@@ -178,8 +192,8 @@ function publishReply(threadId) {
     const author = authorInput.value.trim() || 'Anonimo Cifrado';
     const content = contentInput.value.trim();
 
-    if (content.length < 5) {
-        alert("ERROR: Respuesta demasiado corta. Mínimo 5 caracteres. [Code: 400]");
+    if (content.length < 10) {
+        alert("ERROR: Respuesta demasiado corta. Mínimo 10 caracteres. [Code: 400]");
         return;
     }
 
@@ -196,17 +210,17 @@ function publishReply(threadId) {
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         
-        // 2. Incrementar el contador del hilo padre (CORRECCIÓN CLAVE)
+        // 2. Incrementar el contador del hilo padre (CRÍTICO: ASEGURAR INCREMENTO DE +1)
         const threadRef = threadsCollection.doc(threadId);
         transaction.update(threadRef, {
             replyCount: firebase.firestore.FieldValue.increment(1)
         });
         
-        return Promise.resolve(); // Transacción exitosa
+        return Promise.resolve(); 
     })
     .then(() => {
         contentInput.value = ''; 
-        // No es necesario alertar, el onSnapshot actualizará la lista de respuestas
+        authorInput.value = '';
     })
     .catch((error) => {
         console.error("> ERROR AL PUBLICAR RESPUESTA (TRANSACCIÓN):", error);
@@ -222,7 +236,6 @@ function publishReply(threadId) {
 function loadThreads() {
     postsContainer.innerHTML = '<p class="text-gray-600">Buscando Hilos de Datos...</p>';
 
-    // Hilos por defecto: Más recientes primero (timestamp: 'desc')
     threadsCollection.orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
         postsContainer.innerHTML = '';
         
@@ -230,8 +243,7 @@ function loadThreads() {
             const threadData = doc.data();
             const threadId = doc.id;
             const timestampStr = formatTimestamp(threadData.timestamp);
-            const likes = threadData.likes || 0;
-            const hasLiked = localStorage.getItem(`liked_${threadId}`) === 'true';
+            const replies = threadData.replyCount || 0;
 
             const threadElement = document.createElement('div');
             threadElement.className = 'p-3 border border-dashed border-gray-700 hover:border-green-500 transition cursor-pointer';
@@ -243,28 +255,16 @@ function loadThreads() {
                 </div>
                 <h3 class="text-white text-md font-bold hover:underline">${threadData.content.substring(0, 100)}${threadData.content.length > 100 ? '...' : ''}</h3>
                 <div class="flex justify-between items-center text-xs mt-2">
-                    <span class="text-green-400">Operador: ${threadData.author} | Respuestas: ${threadData.replyCount || 0}</span>
-                    <button id="like-btn-${threadId}" 
-                            class="text-red-500 hover:text-white transition like-btn ${hasLiked ? 'liked-active' : ''}"
-                            ${hasLiked ? 'disabled' : ''}>
-                        <span data-lucide="zap" class="w-4 h-4 inline-block mr-1 like-icon"></span> ${likes} BADGES
-                    </button>
+                    <span class="text-green-400">Operador: ${threadData.author}</span>
+                    <span class="text-yellow-400">
+                        <span data-lucide="message-square" class="w-4 h-4 inline-block mr-1"></span> ${replies} RESPUESTAS
+                    </span>
                 </div>
             `;
             
-            // Event Listeners (Delegados)
             threadElement.addEventListener('click', () => {
                 displayThread(threadId, threadData);
             });
-
-            const likeButton = threadElement.querySelector(`#like-btn-${threadId}`);
-            if (likeButton) {
-                // Prevenir que el click en el botón navegue al detalle
-                likeButton.addEventListener('click', (e) => {
-                    e.stopPropagation(); 
-                    addLike(threadId, likeButton);
-                });
-            }
             
             postsContainer.appendChild(threadElement);
         });
@@ -276,22 +276,22 @@ function loadThreads() {
     });
 }
 
-function loadTopThreads() {
-    topThreadsContainer.innerHTML = '<p class="text-gray-600">Buscando ranking de Badges...</p>';
+function loadTopThreadsByReplies() {
+    topThreadsContainer.innerHTML = '<p class="text-gray-600">Buscando ranking por actividad...</p>';
 
-    // Ranking: Ordenar por likes (CORRECTO)
-    threadsCollection.orderBy('likes', 'desc').limit(10).onSnapshot((snapshot) => {
+    // Ranking: Ordenar por replyCount (MÁS COMENTADOS)
+    threadsCollection.orderBy('replyCount', 'desc').limit(10).onSnapshot((snapshot) => {
         topThreadsContainer.innerHTML = '';
         
         if (snapshot.empty) {
-            topThreadsContainer.innerHTML = '<p class="text-gray-600">No hay transmisiones rankeadas aún. Necesitas Badges (Likes).</p>';
+            topThreadsContainer.innerHTML = '<p class="text-gray-600">No hay hilos rankeados por actividad aún.</p>';
             return;
         }
 
         snapshot.forEach((doc, index) => {
             const threadData = doc.data();
             const threadId = doc.id;
-            const likes = threadData.likes || 0;
+            const replies = threadData.replyCount || 0;
 
             const threadElement = document.createElement('div');
             threadElement.className = 'flex flex-col sm:flex-row justify-between items-start sm:items-center p-2 border-b border-gray-800 cursor-pointer hover:bg-gray-900 transition';
@@ -303,7 +303,7 @@ function loadTopThreads() {
                     </span>
                 </div>
                 <span class="text-red-500 text-xs ml-6 sm:ml-2">
-                    <span data-lucide="zap" class="w-3 h-3 inline-block"></span> ${likes} BADGES
+                    <span data-lucide="message-square" class="w-3 h-3 inline-block"></span> ${replies} REPLIES
                 </span>
             `;
             topThreadsContainer.appendChild(threadElement);
@@ -312,34 +312,26 @@ function loadTopThreads() {
     });
 }
 
-
 function displayThread(threadId, threadData) {
     showDetailView(threadId);
 
     const threadContentDiv = document.getElementById('current-thread-content');
     const replyButton = document.getElementById('reply-button');
     const timestampStr = formatTimestamp(threadData.timestamp);
-    const likes = threadData.likes || 0;
-    const hasLiked = localStorage.getItem(`liked_${threadId}`) === 'true';
+    const replies = threadData.replyCount || 0;
 
     threadContentDiv.innerHTML = `
         <h3 class="text-xl text-red-400 mb-2 font-bold">[ HILO CIFRADO: ${threadId} ]</h3>
         <p class="mb-4">${threadData.content}</p>
         <div class="flex justify-between items-center text-xs text-gray-500 mt-4">
             <span>Operador: ${threadData.author} | Fecha/Hora: ${timestampStr}</span>
-            <button id="detail-like-btn" 
-                    class="text-red-500 transition hacker-btn like-btn ${hasLiked ? 'liked-active' : ''}"
-                    ${hasLiked ? 'disabled' : ''}>
-                <span data-lucide="zap" class="w-4 h-4 inline-block mr-1 like-icon"></span> OTORGAR BADGE (${likes})
-            </button>
+            <span class="text-yellow-400">
+                <span data-lucide="message-square" class="w-4 h-4 inline-block mr-1"></span> REPLIES: ${replies}
+            </span>
         </div>
     `;
 
-    const detailLikeButton = document.getElementById('detail-like-btn');
-    if (detailLikeButton) {
-        detailLikeButton.addEventListener('click', () => addLike(threadId, detailLikeButton));
-    }
-
+    // Configurar respuesta y cargar replies...
     const replyAuthorInput = document.getElementById('reply-author');
     const replyContentInput = document.getElementById('reply-content');
     replyButton.onclick = () => publishReply(threadId);
@@ -348,6 +340,7 @@ function displayThread(threadId, threadData) {
     lucide.createIcons();
 }
 
+// (loadReplies se mantiene igual)
 function loadReplies(threadId) {
     repliesContainer.innerHTML = '<p class="text-gray-600">Buscando Respuestas de Datos...</p>';
     const repliesCollection = threadsCollection.doc(threadId).collection('replies');
@@ -387,13 +380,13 @@ function initApp() {
     localStorage.setItem('user-id', userId);
     document.getElementById('user-id-display').textContent = userId;
 
-    // Generar logs laterales (no se muestra aquí por concisión)
-    // generateRandomLog('log-left'); 
-    // generateRandomLog('log-right');
+    // Iniciar el efecto Matrix
+    initMatrixEffect();
     
     // Control de modales y botones
     document.getElementById('close-rules-btn').addEventListener('click', () => {
         rulesModal.style.display = 'none';
+        contentWrapper.classList.remove('hidden'); // Mostrar el contenido principal al ACEPTAR
     });
     document.getElementById('show-rules-btn').addEventListener('click', () => {
         rulesModal.style.display = 'flex';
@@ -406,4 +399,6 @@ function initApp() {
     initPreloader();
     lucide.createIcons();
 }
+
+
 
