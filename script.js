@@ -18,9 +18,16 @@ const threadListView = document.getElementById('thread-list-view');
 const threadDetailView = document.getElementById('thread-detail-view');
 const preloader = document.getElementById('preloader');
 const contentWrapper = document.getElementById('content-wrapper');
+const rulesModal = document.getElementById('rules-modal');
+const submitThreadBtn = document.getElementById('submit-thread-btn');
+const postsContainer = document.getElementById('posts-container');
+const repliesContainer = document.getElementById('replies-container');
+
+// Variable global para mantener el ID del hilo actual
+let currentThreadId = null;
 
 // -----------------------------------------------------
-// FUNCIÓN DE UTILIDAD
+// 01. GESTIÓN DE VISTAS Y UTILIDADES
 // -----------------------------------------------------
 
 function formatTimestamp(timestamp) {
@@ -35,56 +42,106 @@ function formatTimestamp(timestamp) {
     });
 }
 
-// -----------------------------------------------------
-// GESTIÓN DE VISTAS Y PRELOADER
-// -----------------------------------------------------
-
-/** Muestra la vista detallada del hilo. */
 function showDetailView() {
     threadListView.style.display = 'none';
     threadDetailView.style.display = 'block';
 }
 
-/** Muestra la vista principal de hilos. */
 function showListView() {
     threadDetailView.style.display = 'none';
     threadListView.style.display = 'block';
 }
 
-/** Gestiona la animación de carga inicial. */
+// -----------------------------------------------------
+// 02. ANIMACIÓN DE INICIO (PRELOADER)
+// -----------------------------------------------------
+
 function initPreloader() {
-    // Calcular el tiempo total de la animación de tipeo (aprox. 7.5s)
+    // 7.5s es el tiempo total del tipeo en el CSS
     const animationDuration = 7500; 
 
     setTimeout(() => {
         preloader.style.opacity = '0';
-        // Después de la transición (0.5s), ocultar y mostrar el contenido
         setTimeout(() => {
             preloader.style.display = 'none';
             contentWrapper.classList.remove('hidden');
-            loadThreads(); // Iniciar carga de datos
+            
+            // Mostrar modal de reglas y cargar datos después de la intro
+            rulesModal.style.display = 'flex';
+            loadThreads(); 
         }, 500);
     }, animationDuration);
 }
 
+// Inicializar Canvas (Efecto Matrix de fondo)
+function initMatrixCanvas() {
+    const canvas = document.getElementById('matrix-bg');
+    const ctx = canvas.getContext('2d');
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+
+    const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890@#$%^&*()_+=-[]{};:<>,./?|`~';
+    const font_size = 10;
+    const columns = canvas.width / font_size;
+    const drops = [];
+
+    for (let x = 0; x < columns; x++) {
+        drops[x] = 1;
+    }
+
+    function draw() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+        ctx.fillStyle = '#0F0'; 
+        ctx.font = font_size + 'px monospace';
+
+        for (let i = 0; i < drops.length; i++) {
+            const text = characters[Math.floor(Math.random() * characters.length)];
+            ctx.fillText(text, i * font_size, drops[i] * font_size);
+
+            if (drops[i] * font_size > canvas.height && Math.random() > 0.975) {
+                drops[i] = 0;
+            }
+            drops[i]++;
+        }
+    }
+    setInterval(draw, 33);
+}
+
+// Generar logs aleatorios para los sidebars
+function generateRandomLog(id) {
+    const logElement = document.getElementById(id);
+    const lines = 100;
+    const logTypes = ['[STATUS]', '[INFO]', '[WARN]', '[SCAN]'];
+    let logContent = '';
+
+    for (let i = 0; i < lines; i++) {
+        const type = logTypes[Math.floor(Math.random() * logTypes.length)];
+        const code = Math.random().toString(16).substring(2, 8).toUpperCase();
+        logContent += `${type} ${code} ${Math.random() < 0.2 ? 'ACCESS DENIED' : 'OK'} - ${Math.random().toString(36).substring(2, 10)}\n`;
+    }
+    logElement.textContent = logContent + logContent; // Duplicar para el scroll infinito
+}
 
 // -----------------------------------------------------
-// PUBLICACIÓN DE HILOS Y RESPUESTAS
+// 03. PUBLICACIÓN Y GESTIÓN DE HILOS
 // -----------------------------------------------------
 
 function publishThread() {
     const authorInput = document.getElementById('thread-author');
     const contentInput = document.getElementById('thread-content');
 
-    const author = authorInput.value.trim() || 'Anonimo';
+    const author = authorInput.value.trim() || 'Anonimo Cifrado'; 
     const content = contentInput.value.trim();
 
-    if (content.length < 5) {
-        alert("ERROR: Contenido demasiado corto. Mínimo 5 caracteres. [Code: 400]");
+    if (content.length < 10) {
+        alert("ERROR: Longitud mínima de 10 caracteres. [Code: 400]");
         return;
     }
 
-    console.log(`> Transmitiendo paquete de datos inicial...`);
+    submitThreadBtn.disabled = true;
+    submitThreadBtn.textContent = "TRANSMITIENDO...";
     
     threadsCollection.add({
         author: author,
@@ -94,77 +151,84 @@ function publishThread() {
     })
     .then((docRef) => {
         console.log(`> Transmisión enviada. ID: ${docRef.id}`);
+        contentInput.value = ''; 
         authorInput.value = '';
-        contentInput.value = '';
         alert("Transmisión Enviada [ACK/200]");
     })
     .catch((error) => {
-        console.error("> ERROR DE CONEXIÓN/ESCRITURA:", error);
-        alert("ERROR: No se pudo enviar la transmisión. Revisar Reglas de Firewall. [Code: 503]");
+        console.error("> ERROR DE ESCRITURA:", error);
+        alert("ERROR: Fallo de escritura. Verificar estado de Firebase. [Code: 503]");
+    })
+    .finally(() => {
+        submitThreadBtn.disabled = false;
+        submitThreadBtn.textContent = "EXECUTE (INIT)";
     });
 }
-
 
 function publishReply(threadId) {
     const authorInput = document.getElementById('reply-author');
     const contentInput = document.getElementById('reply-content');
+    const replyButton = document.getElementById('reply-button');
 
-    const author = authorInput.value.trim() || 'Anonimo';
+    const author = authorInput.value.trim() || 'Anonimo Cifrado';
     const content = contentInput.value.trim();
 
-    if (content.length < 2) {
-        alert("ERROR: Respuesta demasiado corta. Mínimo 2 caracteres. [Code: 400]");
+    if (content.length < 5) {
+        alert("ERROR: Respuesta demasiado corta. Mínimo 5 caracteres. [Code: 400]");
         return;
     }
 
+    replyButton.disabled = true;
+    replyButton.textContent = "EJECUTANDO...";
+
     const repliesCollection = threadsCollection.doc(threadId).collection('replies');
     
-    console.log(`> Enviando respuesta a Hilo ${threadId}...`);
-
     repliesCollection.add({
         author: author,
         content: content,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
     })
     .then(() => {
-        // Incrementa el contador en el documento del hilo principal
+        // Incrementa el contador del hilo padre
         threadsCollection.doc(threadId).update({
             replyCount: firebase.firestore.FieldValue.increment(1)
         });
         
-        console.log(`> Respuesta enviada. Datos comprometidos.`);
+        console.log(`> Respuesta enviada a Hilo: ${threadId}`);
         contentInput.value = ''; 
     })
     .catch((error) => {
         console.error("> ERROR AL PUBLICAR RESPUESTA:", error);
-        alert("ERROR: Fallo en la transmisión de respuesta. Revisar Reglas de Firebase. [Code: 500]");
+        alert("ERROR: Fallo en la transmisión de respuesta. [Code: 500]");
+    })
+    .finally(() => {
+        replyButton.disabled = false;
+        replyButton.textContent = "EXECUTE (REPLY)";
     });
 }
 
-// -----------------------------------------------------
-// CARGA Y LISTADO DE DATOS (REAL-TIME)
-// -----------------------------------------------------
 
 function loadThreads() {
-    const threadsList = document.getElementById('threads-list');
+    postsContainer.innerHTML = '<p class="text-gray-600">Buscando Hilos de Datos...</p>';
 
     threadsCollection.orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
-        threadsList.innerHTML = '<h2>> $ ls -l /data/threads</h2>';
+        postsContainer.innerHTML = '';
+        
         snapshot.forEach((doc) => {
             const threadData = doc.data();
             const threadId = doc.id;
-            
-            const threadElement = document.createElement('div');
-            threadElement.className = 'thread-post';
-            threadElement.setAttribute('data-thread-id', threadId);
-            
             const timestampStr = formatTimestamp(threadData.timestamp);
 
+            const threadElement = document.createElement('div');
+            threadElement.className = 'p-3 border border-dashed border-gray-700 hover:border-green-500 cursor-pointer transition';
             threadElement.innerHTML = `
-                <h3>[${threadId.substring(0, 4)}...] ${threadData.content.substring(0, 80)}${threadData.content.length > 80 ? '...' : ''}</h3>
-                <div class="thread-meta">
-                    [Autor: ${threadData.author}] | [Fecha: ${timestampStr}] 
-                    <span class="reply-count">| [Respuestas: ${threadData.replyCount || 0}]</span>
+                <div class="flex justify-between text-sm mb-1">
+                    <span class="text-red-400 font-bold">[ THREAD_ID: ${threadId.substring(0, 6)}... ]</span>
+                    <span class="text-gray-500">${timestampStr}</span>
+                </div>
+                <h3 class="text-white text-md font-bold">${threadData.content.substring(0, 100)}${threadData.content.length > 100 ? '...' : ''}</h3>
+                <div class="text-xs mt-1 text-green-400">
+                    Operador: ${threadData.author} | Respuestas: ${threadData.replyCount || 0}
                 </div>
             `;
             
@@ -172,19 +236,20 @@ function loadThreads() {
                 displayThread(threadId, threadData);
             });
             
-            threadsList.appendChild(threadElement);
+            postsContainer.appendChild(threadElement);
         });
         
         if (snapshot.empty) {
-            threadsList.innerHTML += '<p style="text-align: center;">-- DIRECTORIO VACÍO. INICIE TRANSMISIÓN --</p>';
+            postsContainer.innerHTML = '<p class="text-center text-gray-600">-- DIRECTORIO VACÍO. INICIE TRANSMISIÓN --</p>';
         }
     }, (error) => {
         console.error("Error al escuchar hilos:", error);
-        threadsList.innerHTML = '<h2>> ERROR DE CONEXIÓN. Código: 503 (Servicio no disponible)</h2>';
+        postsContainer.innerHTML = '<p class="text-center text-error">ERROR DE CONEXIÓN. Código: 503</p>';
     });
 }
 
 function displayThread(threadId, threadData) {
+    currentThreadId = threadId;
     showDetailView();
 
     const threadContentDiv = document.getElementById('current-thread-content');
@@ -193,12 +258,10 @@ function displayThread(threadId, threadData) {
     
     // Contenido del hilo principal
     threadContentDiv.innerHTML = `
-        <div class="main-thread-post">
-            <h3>>> CÓDIGO DE HILO: ${threadId}</h3>
-            <p>${threadData.content}</p>
-            <div class="thread-meta">
-                [Autor: ${threadData.author}] | [Fecha/Hora: ${timestampStr}]
-            </div>
+        <h3 class="text-xl text-red-400 mb-2 font-bold">[ HILO CIFRADO: ${threadId} ]</h3>
+        <p class="mb-4">${threadData.content}</p>
+        <div class="text-xs text-gray-500">
+            Operador: ${threadData.author} | Fecha/Hora: ${timestampStr}
         </div>
     `;
 
@@ -210,43 +273,60 @@ function displayThread(threadId, threadData) {
 }
 
 function loadReplies(threadId) {
-    const repliesList = document.getElementById('replies-list');
+    repliesContainer.innerHTML = '<p class="text-gray-600">Buscando Respuestas de Datos...</p>';
     const repliesCollection = threadsCollection.doc(threadId).collection('replies');
-
-    repliesList.innerHTML = '<h2>> $ cat /data/replies (Cargando...)</h2>';
     
-    // Escucha en tiempo real, ordenando por fecha de creación ascendente
     repliesCollection.orderBy('timestamp', 'asc').onSnapshot((snapshot) => {
-        repliesList.innerHTML = '<h2>> $ cat /data/replies</h2>';
+        repliesContainer.innerHTML = '';
         
         snapshot.forEach((doc) => {
             const replyData = doc.data();
             const timestampStr = formatTimestamp(replyData.timestamp);
             
             const replyElement = document.createElement('div');
-            replyElement.className = 'reply-post';
+            replyElement.className = 'p-3 border-l-2 border-green-500 bg-black bg-opacity-30';
             replyElement.innerHTML = `
-                <div class="thread-meta">
+                <div class="text-xs text-green-400 mb-1">
                     > Transmisión de ${replyData.author} [${timestampStr}]
                 </div>
-                <p>${replyData.content}</p>
+                <p class="text-sm">${replyData.content}</p>
             `;
             
-            repliesList.appendChild(replyElement);
+            repliesContainer.appendChild(replyElement);
         });
 
         if (snapshot.empty) {
-            repliesList.innerHTML += '<p style="text-align: center;">-- SUB-DIRECTORIO VACÍO. INICIE DIÁLOGO --</p>';
+            repliesContainer.innerHTML = '<p class="text-center text-gray-600">-- SUB-DIRECTORIO VACÍO --</p>';
         }
 
     }, (error) => {
         console.error("Error al escuchar respuestas:", error);
-        repliesList.innerHTML = '<h2>> ERROR DE LECTURA. Fallo de integridad de datos.</h2>';
+        repliesContainer.innerHTML = '<p class="text-center text-error">ERROR DE LECTURA DE RESPUESTAS.</p>';
     });
 }
 
+// -----------------------------------------------------
+// 04. INICIALIZACIÓN FINAL
+// -----------------------------------------------------
 
-// -----------------------------------------------------
-// INICIO
-// -----------------------------------------------------
-window.onload = initPreloader;
+function initApp() {
+    // Inicializar efectos visuales
+    initMatrixCanvas();
+    generateRandomLog('log-left');
+    generateRandomLog('log-right');
+    
+    // Generar ID anónimo para el usuario (simulación)
+    document.getElementById('user-id-display').textContent = 'Cipher_' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    
+    // Configurar modal de reglas
+    document.getElementById('close-rules-btn').addEventListener('click', () => {
+        rulesModal.style.display = 'none';
+    });
+    document.getElementById('show-rules-btn').addEventListener('click', () => {
+        rulesModal.style.display = 'flex';
+    });
+    
+    // Iniciar la secuencia de carga
+    initPreloader();
+}
+
