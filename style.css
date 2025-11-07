@@ -1,0 +1,168 @@
+/* --- Estilos Globales y Fondo Hacking --- */
+:root {
+    --bg-dark: #0a0a0d;
+    --neon-green: #00ff41;
+    --neon-blue: #00ffff;
+    --terminal-font: 'Consolas', 'Courier New', monospace;
+}
+
+body {
+    background-color: var(--bg-dark);
+    color: var(--neon-green);
+    font-family: var(--terminal-font);
+    margin: 0;
+    padding: 0;
+    line-height: 1.6;
+    min-height: 100vh;
+    overflow-x: hidden;
+}
+
+/* --- Efecto de Fondo Hacking (Animación) --- */
+/* Simple efecto de ruido/escaneo para ambiente 'dark web' */
+#matrix-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    /* Efecto de 'scanlines' sutil */
+    background: repeating-linear-gradient(
+        transparent 0%,
+        rgba(0, 0, 0, 0.4) 50%,
+        transparent 100%
+    );
+    opacity: 0.1;
+    pointer-events: none; /* Permite clickear el contenido detrás */
+    z-index: -1;
+    animation: flicker 15s infinite alternate; /* Animación de parpadeo */
+}
+
+@keyframes flicker {
+    0%, 100% { opacity: 0.1; }
+    5% { opacity: 0.15; }
+    10% { opacity: 0.05; }
+    15% { opacity: 0.2; }
+    20% { opacity: 0.1; }
+    /* ... más puntos para simular un mal contacto/interferencia */
+    90% { opacity: 0.12; }
+}
+
+
+/* --- Componentes de la Interfaz --- */
+header, main, footer {
+    max-width: 900px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+h1 {
+    color: var(--neon-blue);
+    text-shadow: 0 0 5px var(--neon-blue), 0 0 10px var(--neon-blue);
+    text-align: center;
+    font-size: 2.5em;
+    border-bottom: 2px solid var(--neon-blue);
+    padding-bottom: 10px;
+    margin-bottom: 0.5em;
+}
+
+h2 {
+    color: var(--neon-green);
+    font-size: 1.3em;
+    margin-top: 20px;
+    margin-bottom: 10px;
+}
+
+.tagline {
+    text-align: center;
+    color: #999;
+    font-size: 0.9em;
+    margin-bottom: 30px;
+}
+
+/* --- Estilo de Terminal/Caja --- */
+.terminal-box {
+    background-color: rgba(0, 0, 0, 0.5); /* Semi-transparente */
+    border: 1px solid var(--neon-green);
+    padding: 15px;
+    margin-bottom: 30px;
+    box-shadow: 0 0 10px var(--neon-green);
+}
+
+/* --- Formularios y Botones --- */
+textarea {
+    width: 100%;
+    background: #000;
+    border: 1px solid var(--neon-green);
+    color: var(--neon-green);
+    font-family: var(--terminal-font);
+    padding: 10px;
+    box-sizing: border-box;
+    resize: vertical;
+    outline: none;
+    box-shadow: inset 0 0 5px rgba(0, 255, 65, 0.5);
+}
+
+.hack-button {
+    background: var(--neon-green);
+    color: var(--bg-dark);
+    border: none;
+    padding: 10px 15px;
+    cursor: pointer;
+    font-family: var(--terminal-font);
+    font-weight: bold;
+    margin-top: 10px;
+    transition: all 0.2s;
+    box-shadow: 0 0 5px var(--neon-green);
+}
+
+.hack-button:hover {
+    background: var(--neon-blue);
+    color: #fff;
+    box-shadow: 0 0 15px var(--neon-blue);
+}
+
+/* --- Estilo de los Posts Individuales --- */
+.post {
+    border: 1px dashed rgba(0, 255, 65, 0.4);
+    padding: 15px;
+    margin-top: 15px;
+    background-color: rgba(0, 0, 0, 0.3);
+    overflow: hidden;
+}
+
+.post-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 0.9em;
+    color: var(--neon-blue);
+    border-bottom: 1px solid rgba(0, 255, 65, 0.2);
+    padding-bottom: 5px;
+    margin-bottom: 10px;
+}
+
+.post-content {
+    white-space: pre-wrap; /* Mantiene saltos de línea y formato */
+}
+
+.post-author {
+    font-weight: bold;
+    color: var(--neon-blue);
+}
+
+.reply-link {
+    color: var(--neon-green);
+    text-decoration: none;
+    font-size: 0.8em;
+    cursor: pointer;
+    display: block;
+    margin-top: 10px;
+}
+
+/* Footer */
+footer {
+    text-align: center;
+    font-size: 0.7em;
+    color: #444;
+    padding-top: 20px;
+    border-top: 1px solid #222;
+}
