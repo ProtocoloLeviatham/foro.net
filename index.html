@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>./root/LEVIATHAM_FORUM.onion - Acceso Cifrado</title>
+    <title>./root/LEVIATHAM_FORUM.onion - Acceso Cifrado [STABLE BUILD]</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module" src="https://unpkg.com/lucide-react@latest/dist/umd/lucide.js"></script>
@@ -25,10 +25,8 @@
         
         /* Lluvia Matrix - Siempre en el fondo (Z-INDEX 0) */
         #matrix-canvas {
-            position: fixed;
-            top: 0; left: 0;
-            width: 100%; height: 100%;
-            z-index: 0; /* Asegura que esté detrás de todo */
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            z-index: 0; 
             pointer-events: none;
             opacity: 0.2; 
         }
@@ -37,7 +35,7 @@
         .main-container { position: relative; z-index: 10; }
         #preloader, #rules-modal { z-index: 9999; }
         
-        /* CRT Effect: Líneas de barrido */
+        /* Efecto CRT: Líneas de barrido */
         body::after {
             content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.15) 1px, transparent 3px);
@@ -55,23 +53,33 @@
         .hacker-input, .hacker-textarea { background-color: #010; border: 1px solid #0A0; color: #0F0; border-radius: 0; outline: none; }
         .hacker-input:focus, .hacker-textarea:focus { box-shadow: 0 0 15px #0F0; border-color: #0F0; }
         .hacker-btn { background-color: transparent; border: 1px solid #0F0; color: #0F0; transition: all 0.3s; border-radius: 0; }
-        .hacker-btn:hover { background-color: #0F0; color: #000; box-shadow: 0 0 15px #0F0; }
+        .hacker-btn:hover:not(:disabled) { background-color: #0F0; color: #000; box-shadow: 0 0 15px #0F0; }
+        .hacker-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
-        /* 3. PRELOADER Y MODAL */
-        #preloader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; transition: opacity 1s; }
-        .preloader-content { border: 3px solid #F0F; box-shadow: 0 0 30px #F0F; padding: 30px; background: rgba(0, 0, 0, 0.9); width: 90%; max-width: 650px; }
-        .typewriter-text { overflow: hidden; white-space: nowrap; width: 0; border-right: 0.15em solid #0FF; animation: typing 0.04s steps(1) forwards, cursor-blink 0.75s step-end infinite; }
-        .text-darkweb { color: #F0F; }
-
-        #rules-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.95); backdrop-filter: blur(2px); display: none; align-items: center; justify-content: center; }
+        /* 3. PRELOADER (Corregido para máxima estabilidad) */
+        #preloader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; transition: opacity 0.5s; }
+        .preloader-content { 
+            border: 3px solid #F0F; 
+            box-shadow: 0 0 30px #F0F; 
+            padding: 30px; 
+            background: rgba(0, 0, 0, 0.9); 
+            width: 90%; max-width: 650px;
+        }
+        .loading-line { overflow: hidden; white-space: nowrap; font-size: 1rem; margin-top: 8px; }
+        
+        /* Animación de Simulación de Carga (Más estable que typewriter) */
+        .loading-line span { 
+            display: inline-block;
+            opacity: 0;
+            animation: fadeInStep 0.1s forwards;
+            animation-timing-function: step-start;
+        }
+        @keyframes fadeInStep { 0% { opacity: 0; } 100% { opacity: 1; } }
 
         /* 4. PAGINACIÓN HACKER */
         .pagination-container {
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            gap: 8px;
-            margin-top: 20px;
+            display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 20px;
+            border-top: 1px dashed #0A0; padding-top: 10px;
         }
         .pagination-btn {
             padding: 4px 8px;
@@ -92,22 +100,24 @@
 
     <div id="preloader">
         <div class="preloader-content">
-            <h1 class="text-3xl text-darkweb mb-6 font-bold">[ INITIATING DARKNET PROTOCOL ]</h1>
-            <p class="typewriter-text text-darkweb" style="animation-delay: 0s;">[>>] $ curl -s -k --proxy socks5://127.0.0.1:9050 http://leviathan.onion/api/v4</p>
-            <p class="typewriter-text mt-2 text-warning" style="animation-delay: 2.5s;">[TOR] Establishing 6-hop circuit: DE->RU->CN->CH->MX->??. Latency: HIGH.</p>
-            <p class="typewriter-text mt-2 text-error" style="animation-delay: 5s;">[ERROR] Security check failed: CLIENT_HEADERS_LEAK. Cleaning session...</p>
-            <p class="typewriter-text mt-2 text-success" style="animation-delay: 7.5s;">[FIREBASE] Secure Tunnel established via NoSQL bridge.</p>
-            <p class="typewriter-text mt-2 text-success" style="animation-delay: 9s;">[ACK/200] ACCESS GRANTED to LEVIATHAM V4.1. Welcome, Operator.</p>
+            <h1 class="text-3xl text-darkweb mb-6 font-bold">[ INITIATING DARKNET PROTOCOL v5.0 ]</h1>
+            <div id="loading-terminal">
+                <p class="loading-line text-darkweb"><span>[>>] $</span> <span>curl</span> <span>-s</span> <span>-k</span> <span>--proxy</span> <span>socks5://127.0.0.1:9050</span> <span>http://leviathan.onion/api/v5</span></p>
+                <p class="loading-line text-warning" style="animation-delay: 2.5s;"><span>[TOR]</span> <span>Establishing</span> <span>6-hop</span> <span>circuit:</span> <span>DE->RU->CN->CH->MX->??.</span></p>
+                <p class="loading-line text-error" style="animation-delay: 5s;"><span>[ERROR]</span> <span>Security</span> <span>check</span> <span>failed:</span> <span>CLIENT_HEADERS_LEAK.</span> <span>Running</span> <span>cleanup...</span></p>
+                <p class="loading-line text-success" style="animation-delay: 7.5s;"><span>[FIREBASE]</span> <span>Secure</span> <span>Tunnel</span> <span>established</span> <span>via</span> <span>NoSQL</span> <span>bridge.</span></p>
+                <p class="loading-line text-success" style="animation-delay: 9s;"><span>[ACK/200]</span> <span>ACCESS</span> <span>GRANTED.</span> <span>Welcome,</span> <span>Operator.</span></p>
+            </div>
         </div>
     </div>
 
     <div id="rules-modal">
         <div class="hacker-box max-w-lg w-full relative p-6 border-red-500 shadow-red-500">
-            <h2 class="text-2xl text-red-500 mb-6 font-bold">[ ! PROTOCOLO DE CONEXIÓN: SEVERO (V4.1) ! ]</h2>
+            <h2 class="text-2xl text-red-500 mb-6 font-bold">[ ! PROTOCOLO DE CONEXIÓN: SEVERO (V5.0) ! ]</h2>
             <ul class="list-disc list-inside space-y-3 text-sm">
-                <li><span class="text-red-400">R1: ANONIMATO CRÍTICO.</span> **NUNCA** publicar información personal o de terceros. Todo es un cifrado. La no-identidad es la única regla de supervivencia. La violación anula el ID de operador.</li>
-                <li><span class="text-red-400">R2: TRAZABILIDAD.</span> Asume monitoreo constante. Los mensajes deben ser ambiguos y el debate estrictamente técnico. Cero rastro, cero error.</li>
-                <li><span class="text-red-400">R3: VALOR TÉCNICO.</span> Prohibido contenido trivial, *spam*, o cualquier material no esencial para el debate de ciberseguridad avanzada.</li>
+                <li><span class="text-red-400">R1: ANONIMATO CRÍTICO.</span> **NUNCA** publicar información personal. La no-identidad es la única regla de supervivencia. La violación anula el ID de operador permanentemente.</li>
+                <li><span class="text-red-400">R2: ESTABILIDAD.</span> Este foro opera con funcionalidad mínima (solo hilos) para maximizar la estabilidad y el anonimato. Se prohibe intentar cualquier modificación al protocolo.</li>
+                <li><span class="text-red-400">R3: PERSISTENCIA.</span> La base de datos es auto-correctiva. La pérdida de datos es inevitable bajo ataque de *flooding*. Contribuye con valor técnico.</li>
                 <li><span class="text-red-400">R4: EXONERACIÓN.</span> El host `LEVIATHAM.onion` es un transmisor pasivo. El operador es responsable de su cifrado y de las consecuencias.</li>
             </ul>
             <button id="close-rules-btn" class="hacker-btn mt-8 w-full text-red-500 border-red-500 hover:bg-red-500">INIT: ACKNOWLEDGE (Aceptar Protocolo)</button>
@@ -139,18 +149,12 @@
                     | | |
                     \_/
                       
-[ Status: Encrypted ]
+[ Status: Encrypted | Mode: STABLE]
 [ Darknet Node: 0x513FA ]
                     </pre>
                     <div class="flex justify-center gap-4 mt-4 text-sm">
-                        <span class="text-green-400">ID: <span id="user-id-display">N/A</span></span>
+                        <span class="text-green-400">ID Operador: <span id="user-id-display">N/A</span></span>
                         <button id="show-rules-btn" class="text-red-500 hover:text-red-300 transition">[ ! PROTOCOLO ]</button>
-                    </div>
-
-                    <div class="mt-4">
-                        <button id="show-ranking-btn" onclick="showRankingView()" class="hacker-btn text-yellow-400 border-yellow-400 hover:bg-yellow-400 hover:text-black transition">
-                            <span data-lucide="message-square" class="w-4 h-4 inline-block mr-2"></span> TOP MÁS COMENTADOS
-                        </button>
                     </div>
                 </header>
                 
@@ -158,7 +162,7 @@
                     
                     <section id="new-post-form" class="hacker-box mb-8 p-4">
                         <h2 class="text-lg mb-4 text-green-400 font-bold">[ $ POST_THREAD -a 'Anon' ]</h2>
-                        <textarea id="thread-content" class="hacker-textarea w-full mb-4" rows="4" placeholder="Escribe tu mensaje/hilo cifrado aquí..."></textarea>
+                        <textarea id="thread-content" class="hacker-textarea w-full mb-4" rows="4" placeholder="Escribe tu mensaje/hilo cifrado aquí... (Solo Hilos)"></textarea>
                         <input type="text" id="thread-author" class="hacker-input w-full mb-4" placeholder="Alias (Opcional, 'Anonimo Cifrado' por defecto)">
                         <button onclick="publishThread()" class="hacker-btn w-full" id="submit-thread-btn">EXECUTE (INIT)</button>
                     </section>
@@ -168,45 +172,9 @@
                         <div id="posts-container" class="space-y-4">
                             <p class="text-gray-600">Buscando Hilos de Datos...</p>
                         </div>
-                    </section>
-                </div>
-
-                <div id="thread-detail-view" style="display: none;">
-                    
-                    <button onclick="showListView()" class="hacker-btn mb-6 text-red-500 border-red-500 hover:text-white hover:bg-red-500 transition">
-                        <span data-lucide="arrow-left" class="w-4 h-4 inline-block mr-2"></span> $ cd ..
-                    </button>
-                    
-                    <div id="current-thread-content" class="hacker-box mb-6 border-red-500 shadow-red-500 p-4">
-                        </div>
-
-                    <div id="reply-form" class="hacker-box mb-6 p-4">
-                        <h2 class="text-lg mb-4 text-green-400 font-bold">[ $ ECHO_REPLY -a 'Anon' ]</h2>
-                        <textarea id="reply-content" class="hacker-textarea w-full mb-4" rows="3" placeholder="Escribe tu respuesta..."></textarea>
-                        <input type="text" id="reply-author" class="hacker-input w-full mb-4" placeholder="Alias (Opcional, 'Anonimo Cifrado' por defecto)">
-                        <button id="reply-button" class="hacker-btn w-full text-green-400 border-green-400">EXECUTE (REPLY)</button>
-                    </div>
-
-                    <div id="replies-list" class="hacker-box p-4">
-                        <h2 class="text-xl mb-4 text-green-400 font-bold">[ $ cat /data/replies ]</h2>
-                        <div id="replies-container" class="space-y-4">
-                            </div>
+                        
                         <div id="pagination-controls" class="pagination-container">
                             </div>
-                    </div>
-                </div>
-
-                <div id="ranking-view" style="display: none;">
-                    <button onclick="showListView()" class="hacker-btn mb-6 text-red-500 border-red-500 hover:text-white hover:bg-red-500 transition">
-                        <span data-lucide="arrow-left" class="w-4 h-4 inline-block mr-2"></span> $ cd ..
-                    </button>
-
-                    <section id="top-threads-section" class="hacker-box p-4">
-                        <h2 class="text-2xl mb-4 text-yellow-400 font-bold">[ $ TOP_10_THREADS -sort by replies ]</h2>
-                        <p class="text-sm text-gray-500 mb-4">Ranking de transmisiones con mayor actividad (Respuestas).</p>
-                        <div id="top-threads-container" class="space-y-3">
-                            <p class="text-gray-600">Cargando ranking...</p>
-                        </div>
                     </section>
                 </div>
             </main>
@@ -223,3 +191,4 @@
     <script src="script.js"></script>
 </body>
 </html>
+
