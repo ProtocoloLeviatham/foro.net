@@ -1,6 +1,5 @@
 // --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
-    // [ ... Tus credenciales de Firebase ... ]
     apiKey: "AIzaSyBZCPk8qp39BoQ99qLfoQlT6pabnqaqinY",
     authDomain: "foro-513fa.firebaseapp.com",
     projectId: "foro-513fa",
@@ -14,9 +13,8 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const threadsCollection = db.collection("threads");
 
-// Intentar activar persistencia (Mejor gestión de caché en móviles)
+// Intentar activar persistencia para mayor estabilidad en cualquier dispositivo
 db.enablePersistence().catch((err) => {
-    // Silenciar errores de persistencia en caso de múltiples pestañas o navegadores no compatibles
     if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
         console.error("Error al activar la persistencia:", err);
     }
@@ -26,14 +24,17 @@ db.enablePersistence().catch((err) => {
 const preloader = document.getElementById('preloader');
 const contentWrapper = document.getElementById('content-wrapper');
 const rulesModal = document.getElementById('rules-modal');
-const postsContainer = document.getElementById('posts-container');
-const repliesContainer = document.getElementById('replies-container');
 const threadListView = document.getElementById('thread-list-view');
 const threadDetailView = document.getElementById('thread-detail-view');
+const rankingView = document.getElementById('ranking-view'); // Nueva vista
+const postsContainer = document.getElementById('posts-container');
+const repliesContainer = document.getElementById('replies-container');
 const topThreadsContainer = document.getElementById('top-threads-container');
+const submitThreadBtn = document.getElementById('submit-thread-btn');
+
 
 // -----------------------------------------------------
-// 01. UTILIDADES Y VISTAS
+// 01. GESTIÓN DE VISTAS Y UTILIDADES
 // -----------------------------------------------------
 
 function formatTimestamp(timestamp) {
@@ -49,14 +50,23 @@ function formatTimestamp(timestamp) {
     });
 }
 
+function showListView() {
+    threadDetailView.style.display = 'none';
+    rankingView.style.display = 'none';
+    threadListView.style.display = 'block';
+}
+
 function showDetailView() {
     threadListView.style.display = 'none';
+    rankingView.style.display = 'none';
     threadDetailView.style.display = 'block';
 }
 
-function showListView() {
+function showRankingView() {
+    threadListView.style.display = 'none';
     threadDetailView.style.display = 'none';
-    threadListView.style.display = 'block';
+    rankingView.style.display = 'block';
+    loadTopThreads(); // Aseguramos que se cargue al entrar
 }
 
 // -----------------------------------------------------
@@ -71,17 +81,16 @@ function initPreloader() {
         setTimeout(() => {
             preloader.style.display = 'none';
             contentWrapper.classList.remove('hidden');
-            
             rulesModal.style.display = 'flex';
             loadThreads(); 
-            loadTopThreads(); // Cargar ranking al inicio
         }, 500);
     }, animationDuration);
 }
 
-// Generar logs aleatorios (mantener el efecto)
 function generateRandomLog(id) {
     const logElement = document.getElementById(id);
+    if (!logElement) return;
+
     const lines = 100;
     const logTypes = ['[STATUS]', '[INFO]', '[WARN]', '[SCAN]'];
     let logContent = '';
@@ -100,38 +109,36 @@ function generateRandomLog(id) {
 // -----------------------------------------------------
 
 function addLike(threadId) {
-    // Usamos el ID del dispositivo o una ID de sesión para evitar spam masivo de likes
-    const userId = localStorage.getItem('user-id') || document.getElementById('user-id-display').textContent;
+    // Usamos localStorage para evitar likes dobles desde el mismo dispositivo
     const likesKey = `liked_${threadId}`;
     
     if (localStorage.getItem(likesKey) === 'true') {
-        alert("Ya has dado like a esta transmisión. [Code: 409]");
+        alert("ERROR: Like ya registrado para esta transmisión. [Code: 409]");
         return;
     }
 
     threadsCollection.doc(threadId).update({
-        likes: firebase.firestore.FieldValue.increment(1) // Incrementar campo 'likes'
+        likes: firebase.firestore.FieldValue.increment(1)
     })
     .then(() => {
-        localStorage.setItem(likesKey, 'true'); // Marcar como gustado
-        alert("Like agregado. Gracias por tu feedback. [ACK/200]");
-        // Opcional: Deshabilitar el botón de like en la interfaz para el usuario
+        localStorage.setItem(likesKey, 'true');
+        console.log(`Like añadido a ${threadId}`);
+        // No es necesario alertar, ya que el onSnapshot lo actualizará.
     })
     .catch((error) => {
         console.error("Error al dar like:", error);
-        alert("Error al procesar el like. [Code: 500]");
+        alert("ERROR: Fallo al procesar el like. [Code: 500]");
     });
 }
 
 
 // -----------------------------------------------------
-// 04. GESTIÓN DE HILOS Y RESPUESTAS (FIREBASE)
+// 04. GESTIÓN DE DATOS (FIREBASE)
 // -----------------------------------------------------
 
 function publishThread() {
     const authorInput = document.getElementById('thread-author');
     const contentInput = document.getElementById('thread-content');
-    const submitThreadBtn = document.getElementById('submit-thread-btn');
 
     const author = authorInput.value.trim() || 'Anonimo Cifrado'; 
     const content = contentInput.value.trim();
@@ -149,7 +156,7 @@ function publishThread() {
         content: content,
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
         replyCount: 0,
-        likes: 0 // Nuevo campo inicial
+        likes: 0
     })
     .then(() => {
         contentInput.value = ''; 
@@ -191,6 +198,7 @@ function publishReply(threadId) {
     })
     .then(() => {
         // ✅ CORRECCIÓN CLAVE: Incrementar el contador de respuestas del hilo padre
+        // Esto asegura que el contador se actualice inmediatamente en la lista
         threadsCollection.doc(threadId).update({
             replyCount: firebase.firestore.FieldValue.increment(1)
         });
@@ -210,7 +218,6 @@ function publishReply(threadId) {
 function loadThreads() {
     postsContainer.innerHTML = '<p class="text-gray-600">Buscando Hilos de Datos...</p>';
 
-    // Listener en tiempo real para la lista principal
     threadsCollection.orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
         postsContainer.innerHTML = '';
         
@@ -218,7 +225,7 @@ function loadThreads() {
             const threadData = doc.data();
             const threadId = doc.id;
             const timestampStr = formatTimestamp(threadData.timestamp);
-            const likes = threadData.likes || 0; // Mostrar likes
+            const likes = threadData.likes || 0;
 
             const threadElement = document.createElement('div');
             threadElement.className = 'p-3 border border-dashed border-gray-700 hover:border-green-500 transition';
@@ -230,13 +237,12 @@ function loadThreads() {
                 <h3 class="text-white text-md font-bold cursor-pointer hover:underline">${threadData.content.substring(0, 100)}${threadData.content.length > 100 ? '...' : ''}</h3>
                 <div class="flex justify-between items-center text-xs mt-2">
                     <span class="text-green-400">Operador: ${threadData.author} | Respuestas: ${threadData.replyCount || 0}</span>
-                    <button class="text-red-500 hover:text-white transition" onclick="addLike('${threadId}')">
+                    <button class="text-red-500 hover:text-white transition like-btn" onclick="addLike('${threadId}')">
                         <span data-lucide="heart" class="w-4 h-4 inline-block mr-1"></span> ${likes}
                     </button>
                 </div>
             `;
             
-            // Añadir evento al título para ir al detalle
             threadElement.querySelector('h3').addEventListener('click', () => {
                 displayThread(threadId, threadData);
             });
@@ -247,19 +253,22 @@ function loadThreads() {
         if (snapshot.empty) {
             postsContainer.innerHTML = '<p class="text-center text-gray-600">-- DIRECTORIO VACÍO. INICIE TRANSMISIÓN --</p>';
         }
-        lucide.createIcons(); // Vuelve a renderizar los iconos
+        lucide.createIcons();
+    }, (error) => {
+        console.error("Error al escuchar hilos:", error);
+        postsContainer.innerHTML = '<p class="text-center text-error">ERROR DE CONEXIÓN. Código: 503</p>';
     });
 }
 
 function loadTopThreads() {
     topThreadsContainer.innerHTML = '<p class="text-gray-600">Buscando ranking...</p>';
 
-    // Consulta para los 10 hilos con más likes, ordenados descendentemente
+    // Consulta para los 10 hilos con más likes
     threadsCollection.orderBy('likes', 'desc').limit(10).onSnapshot((snapshot) => {
         topThreadsContainer.innerHTML = '';
         
         if (snapshot.empty) {
-            topThreadsContainer.innerHTML = '<p class="text-gray-600">No hay transmisiones rankeadas aún.</p>';
+            topThreadsContainer.innerHTML = '<p class="text-gray-600">No hay transmisiones rankeadas aún. Necesitas likes.</p>';
             return;
         }
 
@@ -269,14 +278,16 @@ function loadTopThreads() {
             const likes = threadData.likes || 0;
 
             const threadElement = document.createElement('div');
-            threadElement.className = 'flex justify-between items-center p-2 border-b border-gray-800 cursor-pointer hover:bg-gray-900 transition';
+            threadElement.className = 'flex flex-col sm:flex-row justify-between items-start sm:items-center p-2 border-b border-gray-800 cursor-pointer hover:bg-gray-900 transition';
             threadElement.innerHTML = `
-                <span class="text-red-400 font-bold w-4">${index + 1}.</span>
-                <span class="truncate text-green-400 flex-1 ml-2" onclick="displayThread('${threadId}', ${JSON.stringify(threadData).replace(/'/g, "\\'")})">
-                    ${threadData.content.substring(0, 30)}...
-                </span>
-                <span class="text-red-500 text-xs ml-2">
-                    <span data-lucide="heart" class="w-3 h-3 inline-block"></span> ${likes}
+                <div class="flex items-center flex-1 mb-1 sm:mb-0" onclick="displayThread('${threadId}', ${JSON.stringify(threadData).replace(/'/g, "\\'")})">
+                    <span class="text-yellow-400 font-bold w-4">${index + 1}.</span>
+                    <span class="truncate text-green-400 flex-1 ml-2">
+                        ${threadData.content.substring(0, 40)}...
+                    </span>
+                </div>
+                <span class="text-red-500 text-xs ml-6 sm:ml-2">
+                    <span data-lucide="heart" class="w-3 h-3 inline-block"></span> ${likes} LIKES
                 </span>
             `;
             topThreadsContainer.appendChild(threadElement);
@@ -297,22 +308,18 @@ function displayThread(threadId, threadData) {
     const timestampStr = formatTimestamp(threadData.timestamp);
     const likes = threadData.likes || 0;
 
-    // Contenido del hilo principal, ahora incluye likes y un botón para dar like
     threadContentDiv.innerHTML = `
         <h3 class="text-xl text-red-400 mb-2 font-bold">[ HILO CIFRADO: ${threadId} ]</h3>
         <p class="mb-4">${threadData.content}</p>
         <div class="flex justify-between items-center text-xs text-gray-500 mt-4">
             <span>Operador: ${threadData.author} | Fecha/Hora: ${timestampStr}</span>
-            <button class="text-red-500 hover:text-white transition hacker-btn" onclick="addLike('${threadId}')">
-                <span data-lucide="heart" class="w-4 h-4 inline-block mr-1"></span> LIKE (${likes})
+            <button class="text-red-500 hover:text-white transition hacker-btn like-btn" onclick="addLike('${threadId}')">
+                <span data-lucide="heart" class="w-4 h-4 inline-block mr-1"></span> DAR LIKE (${likes})
             </button>
         </div>
     `;
 
-    // Configurar el botón de respuesta
     replyButton.onclick = () => publishReply(threadId);
-
-    // Cargar respuestas
     loadReplies(threadId);
     lucide.createIcons();
 }
@@ -343,7 +350,6 @@ function loadReplies(threadId) {
         if (snapshot.empty) {
             repliesContainer.innerHTML = '<p class="text-center text-gray-600">-- SUB-DIRECTORIO VACÍO --</p>';
         }
-
     });
 }
 
@@ -352,15 +358,15 @@ function loadReplies(threadId) {
 // -----------------------------------------------------
 
 function initApp() {
-    // Generar ID anónimo para el usuario (simulación)
-    const userId = 'Cipher_' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    // Generar ID anónimo (estable)
+    const userId = localStorage.getItem('user-id') || 'Cipher_' + Math.random().toString(36).substring(2, 8).toUpperCase();
+    localStorage.setItem('user-id', userId);
     document.getElementById('user-id-display').textContent = userId;
-    localStorage.setItem('user-id', userId); // Guardar para gestión de likes
 
     generateRandomLog('log-left');
     generateRandomLog('log-right');
     
-    // Configurar modal de reglas
+    // Control de modales
     document.getElementById('close-rules-btn').addEventListener('click', () => {
         rulesModal.style.display = 'none';
     });
@@ -368,7 +374,11 @@ function initApp() {
         rulesModal.style.display = 'flex';
     });
     
+    // Desactivar botón de post hasta la inicialización completa
+    submitThreadBtn.disabled = false;
+    submitThreadBtn.textContent = "EXECUTE (INIT)";
+    
     // Iniciar la secuencia de carga
     initPreloader();
+    lucide.createIcons();
 }
-
