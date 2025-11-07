@@ -16,7 +16,7 @@ const threadsCollection = db.collection("threads");
 // Intento robusto de persistencia
 db.enablePersistence().catch((err) => {
     if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
-        console.error("Error al activar la persistencia:", err);
+        console.warn("WARN: Persistencia de Firebase no disponible o fallida:", err);
     }
 });
 
@@ -40,13 +40,9 @@ const submitThreadBtn = document.getElementById('submit-thread-btn');
 function formatTimestamp(timestamp) {
     if (!timestamp || !timestamp.toDate) return 'Timestamp no disponible';
     const date = timestamp.toDate();
-    if (isNaN(date)) return 'Fecha inválida';
     return date.toLocaleString('es-ES', { 
-        year: 'numeric', 
-        month: '2-digit', 
-        day: '2-digit', 
-        hour: '2-digit', 
-        minute: '2-digit' 
+        year: 'numeric', month: '2-digit', day: '2-digit', 
+        hour: '2-digit', minute: '2-digit' 
     });
 }
 
@@ -56,10 +52,12 @@ function showListView() {
     threadListView.style.display = 'block';
 }
 
-function showDetailView() {
+function showDetailView(threadId) {
     threadListView.style.display = 'none';
     rankingView.style.display = 'none';
     threadDetailView.style.display = 'block';
+    // Se asegura de que la URL refleje el hilo (opcional, pero útil para historial)
+    // window.history.pushState(null, '', `#thread-${threadId}`);
 }
 
 function showRankingView() {
@@ -70,78 +68,63 @@ function showRankingView() {
 }
 
 // -----------------------------------------------------
-// 02. ANIMACIÓN DE INICIO Y LOGS
+// 02. ANIMACIÓN DE INICIO (CORREGIDA)
 // -----------------------------------------------------
 
 function initPreloader() {
-    // 8.5 segundos es la duración total de la secuencia de tipeo
-    const animationDuration = 8500; 
+    // Calcular el tiempo total de la animación de tipeo (8.5s del último delay + 0.5s de buffer)
+    const animationDuration = 9000; 
 
     setTimeout(() => {
+        // Iniciar el desvanecimiento después de que todas las líneas se han escrito
         preloader.style.opacity = '0';
+        
         setTimeout(() => {
+            // Ocultar el preloader y mostrar el contenido
             preloader.style.display = 'none';
             contentWrapper.classList.remove('hidden');
-            rulesModal.style.display = 'flex';
+            rulesModal.style.display = 'flex'; // Mostrar Modal de Reglas
             loadThreads(); 
-        }, 1000); // 1 segundo de desvanecimiento
+        }, 1000); // 1 segundo para el desvanecimiento
     }, animationDuration);
 }
 
-function generateRandomLog(id) {
-    const logElement = document.getElementById(id);
-    if (!logElement) return;
-
-    const lines = 100;
-    const logTypes = ['[STATUS]', '[INFO]', '[WARN]', '[SCAN]', '[INIT]', '[ACK]'];
-    let logContent = '';
-
-    for (let i = 0; i < lines; i++) {
-        const type = logTypes[Math.floor(Math.random() * logTypes.length)];
-        const code = Math.random().toString(16).substring(2, 8).toUpperCase();
-        logContent += `${type} ${code} ${Math.random() < 0.2 ? 'ACCESS DENIED' : 'OK'} - ${Math.random().toString(36).substring(2, 10)}\n`;
-    }
-    logElement.textContent = logContent + logContent; 
-}
-
-
 // -----------------------------------------------------
-// 03. FUNCIONES DE INTERACCIÓN (LIKES - CORREGIDO)
+// 03. FUNCIONES DE INTERACCIÓN (LIKES/BADGES)
 // -----------------------------------------------------
 
 function addLike(threadId, buttonElement) {
-    // Usamos el ID de sesión del usuario para evitar spam
     const likesKey = `liked_${threadId}`;
     
+    // Verificación de doble like (primero en la interfaz)
     if (localStorage.getItem(likesKey) === 'true') {
-        alert("ERROR: Ya has otorgado un Badge a esta transmisión. [Code: 409]");
-        return;
+        console.warn("Ya se otorgó Badge. Intento bloqueado localmente.");
+        return; // Salir inmediatamente si ya votó
     }
 
-    // Deshabilitar temporalmente el botón para prevenir doble click
+    // Deshabilitar el botón inmediatamente
     buttonElement.disabled = true;
+    buttonElement.style.opacity = '0.5';
 
     threadsCollection.doc(threadId).update({
         likes: firebase.firestore.FieldValue.increment(1)
     })
     .then(() => {
         localStorage.setItem(likesKey, 'true');
-        // El onSnapshot debería actualizar el contador visualmente
+        
+        // Efecto visual de Badge otorgado
         buttonElement.classList.add('liked-active');
+        buttonElement.style.opacity = '1';
+        
+        console.log(`Badge otorgado a ${threadId}.`);
     })
     .catch((error) => {
-        // El fallo casi siempre es por las reglas de seguridad. 
-        // Si las reglas están bien, esto debería ser solo un error de red.
-        console.error("Error al dar like:", error);
-        alert("ERROR CRÍTICO: Fallo en el servidor de Likes. Revise Reglas Firestore. [Code: 500]");
-    })
-    .finally(() => {
-        // El botón permanece deshabilitado ya que el like fue usado
-        buttonElement.disabled = false;
-        // Pero si fue exitoso, mantenemos el estado de "ya ha votado"
-        if (localStorage.getItem(likesKey) === 'true') {
-             buttonElement.disabled = true;
-        }
+        console.error("ERROR CRÍTICO AL PROCESAR BADGE (LIKE):", error);
+        alert("ERROR: El servidor de Badges falló. Revise reglas de seguridad. [Code: 500]");
+        
+        // Si falla, re-habilitamos el botón para permitir reintento (aunque no debería ocurrir con reglas correctas)
+        buttonElement.disabled = false; 
+        buttonElement.style.opacity = '1';
     });
 }
 
@@ -187,10 +170,59 @@ function publishThread() {
     });
 }
 
+function publishReply(threadId) {
+    const authorInput = document.getElementById('reply-author');
+    const contentInput = document.getElementById('reply-content');
+    const replyButton = document.getElementById('reply-button');
+
+    const author = authorInput.value.trim() || 'Anonimo Cifrado';
+    const content = contentInput.value.trim();
+
+    if (content.length < 5) {
+        alert("ERROR: Respuesta demasiado corta. Mínimo 5 caracteres. [Code: 400]");
+        return;
+    }
+
+    replyButton.disabled = true;
+    replyButton.textContent = "EJECUTANDO...";
+
+    const repliesCollection = threadsCollection.doc(threadId).collection('replies');
+    
+    db.runTransaction((transaction) => {
+        // 1. Añadir la respuesta
+        transaction.set(repliesCollection.doc(), {
+            author: author,
+            content: content,
+            timestamp: firebase.firestore.FieldValue.serverTimestamp()
+        });
+        
+        // 2. Incrementar el contador del hilo padre (CORRECCIÓN CLAVE)
+        const threadRef = threadsCollection.doc(threadId);
+        transaction.update(threadRef, {
+            replyCount: firebase.firestore.FieldValue.increment(1)
+        });
+        
+        return Promise.resolve(); // Transacción exitosa
+    })
+    .then(() => {
+        contentInput.value = ''; 
+        // No es necesario alertar, el onSnapshot actualizará la lista de respuestas
+    })
+    .catch((error) => {
+        console.error("> ERROR AL PUBLICAR RESPUESTA (TRANSACCIÓN):", error);
+        alert("ERROR: Fallo de transacción. [Code: 500]");
+    })
+    .finally(() => {
+        replyButton.disabled = false;
+        replyButton.textContent = "EXECUTE (REPLY)";
+    });
+}
+
+
 function loadThreads() {
     postsContainer.innerHTML = '<p class="text-gray-600">Buscando Hilos de Datos...</p>';
 
-    // Se mantiene el orderBy para la lista principal
+    // Hilos por defecto: Más recientes primero (timestamp: 'desc')
     threadsCollection.orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
         postsContainer.innerHTML = '';
         
@@ -202,13 +234,14 @@ function loadThreads() {
             const hasLiked = localStorage.getItem(`liked_${threadId}`) === 'true';
 
             const threadElement = document.createElement('div');
-            threadElement.className = 'p-3 border border-dashed border-gray-700 hover:border-green-500 transition';
+            threadElement.className = 'p-3 border border-dashed border-gray-700 hover:border-green-500 transition cursor-pointer';
+            
             threadElement.innerHTML = `
                 <div class="flex justify-between text-sm mb-1">
                     <span class="text-red-400 font-bold">[ THREAD_ID: ${threadId.substring(0, 6)}... ]</span>
                     <span class="text-gray-500">${timestampStr}</span>
                 </div>
-                <h3 class="text-white text-md font-bold cursor-pointer hover:underline">${threadData.content.substring(0, 100)}${threadData.content.length > 100 ? '...' : ''}</h3>
+                <h3 class="text-white text-md font-bold hover:underline">${threadData.content.substring(0, 100)}${threadData.content.length > 100 ? '...' : ''}</h3>
                 <div class="flex justify-between items-center text-xs mt-2">
                     <span class="text-green-400">Operador: ${threadData.author} | Respuestas: ${threadData.replyCount || 0}</span>
                     <button id="like-btn-${threadId}" 
@@ -219,12 +252,19 @@ function loadThreads() {
                 </div>
             `;
             
-            // Event Listeners
-            threadElement.querySelector('h3').addEventListener('click', () => {
+            // Event Listeners (Delegados)
+            threadElement.addEventListener('click', () => {
                 displayThread(threadId, threadData);
             });
+
             const likeButton = threadElement.querySelector(`#like-btn-${threadId}`);
-            likeButton.addEventListener('click', () => addLike(threadId, likeButton));
+            if (likeButton) {
+                // Prevenir que el click en el botón navegue al detalle
+                likeButton.addEventListener('click', (e) => {
+                    e.stopPropagation(); 
+                    addLike(threadId, likeButton);
+                });
+            }
             
             postsContainer.appendChild(threadElement);
         });
@@ -239,7 +279,7 @@ function loadThreads() {
 function loadTopThreads() {
     topThreadsContainer.innerHTML = '<p class="text-gray-600">Buscando ranking de Badges...</p>';
 
-    // Consulta TOP 10 (Se mantiene el orden por likes)
+    // Ranking: Ordenar por likes (CORRECTO)
     threadsCollection.orderBy('likes', 'desc').limit(10).onSnapshot((snapshot) => {
         topThreadsContainer.innerHTML = '';
         
@@ -272,8 +312,9 @@ function loadTopThreads() {
     });
 }
 
+
 function displayThread(threadId, threadData) {
-    showDetailView();
+    showDetailView(threadId);
 
     const threadContentDiv = document.getElementById('current-thread-content');
     const replyButton = document.getElementById('reply-button');
@@ -294,11 +335,11 @@ function displayThread(threadId, threadData) {
         </div>
     `;
 
-    // Event listener para el botón de like en la vista de detalle
     const detailLikeButton = document.getElementById('detail-like-btn');
-    detailLikeButton.addEventListener('click', () => addLike(threadId, detailLikeButton));
+    if (detailLikeButton) {
+        detailLikeButton.addEventListener('click', () => addLike(threadId, detailLikeButton));
+    }
 
-    // Configurar respuesta y cargar replies...
     const replyAuthorInput = document.getElementById('reply-author');
     const replyContentInput = document.getElementById('reply-content');
     replyButton.onclick = () => publishReply(threadId);
@@ -307,8 +348,34 @@ function displayThread(threadId, threadData) {
     lucide.createIcons();
 }
 
-// (La función publishReply y loadReplies se mantienen sin cambios, 
-// ya que su lógica de Firebase es estable con las reglas)
+function loadReplies(threadId) {
+    repliesContainer.innerHTML = '<p class="text-gray-600">Buscando Respuestas de Datos...</p>';
+    const repliesCollection = threadsCollection.doc(threadId).collection('replies');
+    
+    repliesCollection.orderBy('timestamp', 'asc').onSnapshot((snapshot) => {
+        repliesContainer.innerHTML = '';
+        
+        snapshot.forEach((doc) => {
+            const replyData = doc.data();
+            const timestampStr = formatTimestamp(replyData.timestamp);
+            
+            const replyElement = document.createElement('div');
+            replyElement.className = 'p-3 border-l-2 border-green-500 bg-black bg-opacity-30';
+            replyElement.innerHTML = `
+                <div class="text-xs text-green-400 mb-1">
+                    > Transmisión de ${replyData.author} [${timestampStr}]
+                </div>
+                <p class="text-sm">${replyData.content}</p>
+            `;
+            
+            repliesContainer.appendChild(replyElement);
+        });
+
+        if (snapshot.empty) {
+            repliesContainer.innerHTML = '<p class="text-center text-gray-600">-- SUB-DIRECTORIO VACÍO --</p>';
+        }
+    });
+}
 
 // -----------------------------------------------------
 // 05. INICIALIZACIÓN FINAL
@@ -320,8 +387,9 @@ function initApp() {
     localStorage.setItem('user-id', userId);
     document.getElementById('user-id-display').textContent = userId;
 
-    generateRandomLog('log-left');
-    generateRandomLog('log-right');
+    // Generar logs laterales (no se muestra aquí por concisión)
+    // generateRandomLog('log-left'); 
+    // generateRandomLog('log-right');
     
     // Control de modales y botones
     document.getElementById('close-rules-btn').addEventListener('click', () => {
@@ -334,7 +402,8 @@ function initApp() {
     submitThreadBtn.disabled = false;
     submitThreadBtn.textContent = "EXECUTE (INIT)";
     
-    // Iniciar la secuencia de carga
+    // Iniciar la secuencia de carga corregida
     initPreloader();
     lucide.createIcons();
 }
+
