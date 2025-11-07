@@ -3,84 +3,460 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Leviathan Protocol - Interfaz Anónima</title>
-    <!-- Carga de Tailwind CSS para utilidades rápidas de diseño (aunque style.css lo domina) -->
+    <title>Leviathan | AnonBoard - Acceso Cifrado</title>
+    <!-- Carga de Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="style.css">
-    <!-- Carga de Google Fonts (Monospace para un toque de terminal) -->
-    <link href="https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap" rel="stylesheet">
+    <!-- Fuente Monospace para estilo Terminal -->
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Roboto+Mono:wght@400;700&display=swap');
+        :root {
+            --neon-green: #00ff00;
+            --dark-bg: #0d1117;
+        }
+
+        body {
+            font-family: 'Roboto Mono', monospace;
+            background-color: var(--dark-bg);
+            color: var(--neon-green);
+            /* Animación de fondo: Simula ruido de terminal */
+            background-image: linear-gradient(rgba(0, 0, 0, 0.4) 1px, transparent 1px),
+                              linear-gradient(90deg, rgba(0, 0, 0, 0.4) 1px, transparent 1px);
+            background-size: 5px 5px;
+            animation: flicker 0.1s infinite alternate;
+        }
+
+        @keyframes flicker {
+            0% { opacity: 0.99; }
+            100% { opacity: 1; }
+        }
+
+        /* Estilo de la interfaz principal: efecto de monitor CRT */
+        .crt-container {
+            border: 2px solid var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green), inset 0 0 5px var(--neon-green);
+            background-color: rgba(13, 17, 23, 0.8);
+            backdrop-filter: blur(2px);
+        }
+
+        /* Estilo para el texto que simula un cursor */
+        .cursor-blink {
+            animation: blink 1s step-start infinite;
+        }
+
+        @keyframes blink {
+            50% { opacity: 0; }
+        }
+
+        /* Estilo de entrada y botón */
+        .terminal-input, .terminal-button {
+            border: 1px solid var(--neon-green);
+            background-color: #000;
+            color: var(--neon-green);
+            box-shadow: 0 0 3px var(--neon-green);
+            transition: box-shadow 0.2s;
+        }
+
+        .terminal-button:hover {
+            box-shadow: 0 0 8px var(--neon-green);
+            background-color: rgba(0, 255, 0, 0.1);
+        }
+
+        /* Títulos de las tarjetas de hilo */
+        .thread-title-glow {
+            text-shadow: 0 0 5px var(--neon-green);
+        }
+
+        /* Animación de entorno "hacking" en los bordes */
+        .hacker-overlay::before, .hacker-overlay::after {
+            content: "";
+            position: fixed;
+            top: 0;
+            width: 15px; /* Ancho de las barras laterales */
+            height: 100vh;
+            background: repeating-linear-gradient(
+                to bottom,
+                var(--neon-green),
+                rgba(0, 255, 0, 0.2) 1px,
+                transparent 1px,
+                transparent 15px
+            );
+            animation: scanline 10s linear infinite;
+            pointer-events: none;
+            z-index: 50;
+        }
+
+        .hacker-overlay::before {
+            left: 0;
+            background-position: 0 0;
+        }
+
+        .hacker-overlay::after {
+            right: 0;
+            background-position: 0 50%;
+        }
+
+        @keyframes scanline {
+            to {
+                background-position: 0 100%;
+            }
+        }
+    </style>
 </head>
-<body class="antialiased">
+<body class="p-4 md:p-8 min-h-screen">
 
-    <!-- Glitch Background Overlay (simula estática de una terminal) -->
-    <div id="glitch-overlay"></div>
+    <!-- Overlay de Ambientación Hacking -->
+    <div class="hacker-overlay"></div>
 
-    <div class="terminal-container">
-        
-        <!-- HEADER / LOGO - Glitch Effect -->
-        <header class="text-center mb-10">
-            <h1 id="terminal-title" class="title glitch" data-text="LEVIATHAN // PROTOCOL">
-                LEVIATHAN // PROTOCOL
-            </h1>
-            <p class="subtitle mt-2">Acceso a la red oscura | Canales 9-12 | Cifrado Activo</p>
-        </header>
-
-        <!-- MAIN CONSOLE LAYOUT -->
-        <main class="grid md:grid-cols-3 gap-8">
-            
-            <!-- LEFT PANEL: POST INPUT (NEW MESSAGE) -->
-            <section class="md:col-span-1 console-panel input-panel">
-                <h2 class="panel-header">>>> INPUT_THREAD // INYECTAR MENSAJE</h2>
-                <form id="postForm" class="flex flex-col space-y-4">
-                    
-                    <div class="input-group">
-                        <label for="username" class="input-label">Identidad (Opcional, 12 car. máx)</label>
-                        <input type="text" id="username" maxlength="12" placeholder="> AGENTE_01" class="console-input" autocomplete="off">
-                    </div>
-
-                    <div class="input-group">
-                        <label for="postContent" class="input-label">Contenido del Thread (Máx 280 car.)</label>
-                        <textarea id="postContent" maxlength="280" placeholder="> Iniciando secuencia de conexión cifrada..." class="console-textarea"></textarea>
-                    </div>
-
-                    <button type="submit" class="console-button">
-                        [ENVIAR SEGURO]
-                    </button>
-                    
-                    <div id="status-message" class="status-box hidden"></div>
-                </form>
-            </section>
-
-            <!-- RIGHT PANEL: POSTS DISPLAY (FORUM FEED) -->
-            <section class="md:col-span-2 console-panel output-panel">
-                <h2 class="panel-header">>>> OUTPUT_LOG // CANAL PRINCIPAL [LIVE FEED]</h2>
-                
-                <!-- The message about the user ID is crucial for collaborative environments -->
-                <div class="user-id-display">
-                    <span class="text-yellow-400">STATUS:</span> <span class="text-white">Conectado como ID_LOCAL: </span> <span id="local-user-id" class="text-green-500 font-bold"></span>
-                    <span class="scan-line-effect block mt-1"></span>
-                </div>
-
-                <div id="postsContainer" class="posts-container">
-                    <!-- Posts will be injected here by JavaScript -->
-                    <p class="text-center text-gray-500 mt-8">Cargando datos cifrados... (Si no aparecen mensajes, la conexión a Firestore es correcta.)</p>
-                </div>
-            </section>
-        </main>
-        
-        <!-- FOOTER / SCANLINE -->
-        <footer class="mt-10 text-center">
-            <p class="text-xs text-gray-600">-- [ EOL: End of Line ] --</p>
-        </footer>
+    <div id="loading" class="text-center text-xl text-yellow-400 mt-20">
+        [ ACCESO INICIADO ] Conectando a Base de Datos Cifrada...
+        <span class="cursor-blink">|</span>
     </div>
 
-    <!-- Firebase Scripts (v9 compatibility wrappers for simplicity) -->
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script> <!-- ESTA LÍNEA FALTABA Y ERA CRÍTICA -->
+    <!-- Contenedor Principal del Foro -->
+    <div id="app" class="hidden max-w-4xl mx-auto crt-container p-6 rounded-xl relative z-10">
 
-    <!-- Project Logic -->
-    <script src="app.js"></script>
+        <!-- Logo ASCII -->
+        <pre class="text-xs md:text-sm lg:text-base text-center mb-6 pt-4 border-b border-green-700 pb-4">
+    .´.. /|
+   / | //
+ _.´./.´./
+( LEVIATHAM )
+ \_`\_`\_/
+   / / /
+  | | |
+  \_/
+        </pre>
+        <div class="text-center mb-6">
+            <h1 class="text-2xl md:text-4xl text-yellow-400 thread-title-glow">
+                [ Protocolo: KaliHunter32 ]
+            </h1>
+            <p class="text-sm text-green-500">[ Status: Online ] | [ Industrias Lazarus ]</p>
+            <p class="text-xs mt-1 text-gray-500">UID Actual: <span id="current-user-uid">Cargando...</span></p>
+        </div>
 
+        <!-- Sección de Creación de Nuevo Hilo -->
+        <div class="mb-8 p-4 bg-gray-800 rounded shadow-lg">
+            <h2 class="text-xl mb-3 text-yellow-300">[[ INICIAR TRANSMISIÓN CIFRADA ]]</h2>
+            <input type="text" id="new-thread-title" placeholder="ASUNTO (Máx 60 caracteres)" maxlength="60"
+                   class="terminal-input w-full p-2 mb-3 focus:outline-none focus:ring-0">
+            <textarea id="new-thread-content" placeholder="CONTENIDO (Máx 500 caracteres)" maxlength="500" rows="4"
+                      class="terminal-input w-full p-2 mb-3 focus:outline-none focus:ring-0 resize-none"></textarea>
+            <button id="post-thread-btn" class="terminal-button w-full p-2 uppercase font-bold">
+                [ PUBLICAR EN EL BUS DE DATOS ]
+            </button>
+            <p id="post-error-msg" class="text-red-500 mt-2 hidden">Error: No se pudo enviar el hilo. Inténtalo de nuevo.</p>
+        </div>
+
+        <!-- Lista de Hilos -->
+        <h2 class="text-2xl mb-4 text-yellow-400 border-b border-green-700 pb-2">[[ HILOS DEL SECTOR 7 ]]</h2>
+        <div id="threads-container" class="space-y-6">
+            <!-- Los hilos se inyectarán aquí por JavaScript -->
+            <p id="no-threads-msg" class="text-gray-500 text-center">[ INICIANDO NUEVOS DATOS... ] No hay hilos disponibles.</p>
+        </div>
+
+        <!-- Modal para Respuestas (Reply) -->
+        <div id="reply-modal" class="fixed inset-0 bg-black bg-opacity-75 z-50 flex items-center justify-center hidden">
+            <div class="crt-container w-11/12 md:w-3/4 lg:w-1/2 p-6 rounded-xl">
+                <h3 id="modal-thread-title" class="text-xl thread-title-glow mb-4 text-yellow-300"></h3>
+                <div id="modal-thread-content" class="bg-gray-800 p-3 rounded mb-4 text-sm text-gray-200"></div>
+
+                <!-- Lista de Respuestas (Replies) -->
+                <h4 class="text-lg mb-2 text-green-400 border-b border-green-700 pb-1">:: RESPUESTAS CIFRADAS ::</h4>
+                <div id="replies-container" class="max-h-60 overflow-y-auto mb-4 space-y-2">
+                    <!-- Las respuestas se inyectarán aquí -->
+                </div>
+
+                <!-- Formulario de Nueva Respuesta -->
+                <textarea id="new-reply-content" placeholder="Tu Respuesta Anónima (Máx 300 caracteres)" maxlength="300" rows="3"
+                          class="terminal-input w-full p-2 mb-3 focus:outline-none focus:ring-0 resize-none text-sm"></textarea>
+                <button id="post-reply-btn" class="terminal-button p-2 font-bold mr-2 w-full md:w-auto">
+                    [ ENVIAR RESPUESTA ]
+                </button>
+                <button id="close-modal-btn" class="terminal-button p-2 font-bold bg-red-800 hover:bg-red-700 mt-2 md:mt-0 w-full md:w-auto">
+                    [ CERRAR CONEXIÓN ]
+                </button>
+                <p id="reply-error-msg" class="text-red-500 mt-2 hidden">Error: No se pudo enviar la respuesta.</p>
+            </div>
+        </div>
+    </div>
+
+    <!-- Scripts de Firebase y Lógica del Foro -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken, onAuthStateChanged, setPersistence, browserSessionPersistence } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, addDoc, setDoc, onSnapshot, collection, query, orderBy, serverTimestamp, runTransaction } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+        import { setLogLevel } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // Configuración de Logging para Debug
+        setLogLevel('Debug');
+
+        // 1. Configuración de Firebase
+        let db, auth;
+        let userId = null;
+        let authReady = false;
+
+        // Variables de entorno MANDATORIAS
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : null;
+        const initialAuthToken = typeof __initial_auth_token !== 'undefined' ? __initial_auth_token : null;
+
+        if (firebaseConfig) {
+            try {
+                const app = initializeApp(firebaseConfig);
+                db = getFirestore(app);
+                auth = getAuth(app);
+            } catch (error) {
+                console.error("Error al inicializar Firebase:", error);
+                document.getElementById('loading').textContent = '[ ERROR FATAL ] No se pudo iniciar el servicio Firebase. Revisa la consola.';
+                // Se eliminó el 'return;' ilegal en el ámbito de módulo.
+            }
+        } else {
+             document.getElementById('loading').textContent = '[ ERROR FATAL ] Configuración de Firebase no disponible.';
+             // Se eliminó el 'return;' ilegal en el ámbito de módulo.
+        }
+
+        // 2. Lógica de Autenticación (Anonimato Requerido)
+        async function authenticateAnonUser() {
+            try {
+                await setPersistence(auth, browserSessionPersistence);
+                if (initialAuthToken) {
+                    await signInWithCustomToken(auth, initialAuthToken);
+                } else {
+                    await signInAnonymously(auth);
+                }
+            } catch (error) {
+                console.error("Error de autenticación:", error);
+                document.getElementById('loading').textContent = '[ ERROR DE AUTH ] No se pudo establecer la conexión anónima.';
+            }
+        }
+
+        // Listener de estado de autenticación
+        // Se añade un chequeo para 'auth' para evitar un error de tiempo de ejecución
+        // si la inicialización de Firebase falló.
+        if (auth) {
+            onAuthStateChanged(auth, (user) => {
+                if (user) {
+                    userId = user.uid;
+                    authReady = true;
+                    const anonId = generateAnonId(userId);
+                    document.getElementById('current-user-uid').textContent = anonId;
+                    document.getElementById('loading').classList.add('hidden');
+                    document.getElementById('app').classList.remove('hidden');
+                    console.log("Usuario autenticado (anónimo):", userId);
+                    loadThreads();
+                } else if (authReady === false) {
+                    // Solo intentamos autenticar si no se ha hecho ya (o si la sesión expiró)
+                    authenticateAnonUser();
+                }
+            });
+        }
+
+        // Genera un ID anónimo basado en el UID para mantener la consistencia
+        function generateAnonId(uid) {
+            // Usa el UID y un pequeño hash para crear un identificador anónimo
+            const hash = uid.substring(uid.length - 4).toUpperCase();
+            return `Anon-${hash}`;
+        }
+
+        // Función para obtener la ruta de la colección de hilos (Público)
+        function getThreadsCollectionRef() {
+            return collection(db, `artifacts/${appId}/public/data/forum_threads`);
+        }
+
+        // 3. Lógica para Publicar un Nuevo Hilo
+        document.getElementById('post-thread-btn').addEventListener('click', async () => {
+            if (!authReady || !userId) return;
+
+            const titleInput = document.getElementById('new-thread-title');
+            const contentInput = document.getElementById('new-thread-content');
+            const errorMsg = document.getElementById('post-error-msg');
+
+            const title = titleInput.value.trim();
+            const content = contentInput.value.trim();
+
+            if (title.length < 5 || content.length < 10) {
+                errorMsg.textContent = 'Error: El ASUNTO y el CONTENIDO son obligatorios (mínimo 5 y 10 caracteres).';
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+            errorMsg.classList.add('hidden');
+
+            try {
+                await addDoc(getThreadsCollectionRef(), {
+                    title: title,
+                    content: content,
+                    authorId: generateAnonId(userId),
+                    timestamp: serverTimestamp(),
+                    replyCount: 0
+                });
+
+                // Limpiar campos
+                titleInput.value = '';
+                contentInput.value = '';
+            } catch (e) {
+                console.error("Error al añadir documento: ", e);
+                errorMsg.textContent = 'Error de conexión: No se pudo publicar el hilo.';
+                errorMsg.classList.remove('hidden');
+            }
+        });
+
+        // 4. Lógica para Cargar Hilos (Tiempo Real)
+        function loadThreads() {
+            if (!db) return;
+
+            const q = query(getThreadsCollectionRef(), orderBy("timestamp", "desc"));
+            const threadsContainer = document.getElementById('threads-container');
+            const noThreadsMsg = document.getElementById('no-threads-msg');
+
+            onSnapshot(q, (snapshot) => {
+                threadsContainer.innerHTML = '';
+                if (snapshot.empty) {
+                    noThreadsMsg.classList.remove('hidden');
+                    return;
+                }
+                noThreadsMsg.classList.add('hidden');
+
+                snapshot.forEach((doc) => {
+                    const thread = doc.data();
+                    const threadId = doc.id;
+                    const date = thread.timestamp ? new Date(thread.timestamp.seconds * 1000).toLocaleString('es-ES') : 'Desconocida';
+                    
+                    const threadCard = `
+                        <div class="thread-card p-4 border border-green-700 rounded-lg bg-gray-900 transition duration-150 hover:border-yellow-400">
+                            <h3 class="text-lg font-bold thread-title-glow text-yellow-300">${thread.title}</h3>
+                            <p class="text-sm text-gray-400 mt-1">[ Autor: ${thread.authorId} | ${date} ]</p>
+                            <p class="text-sm text-gray-200 mt-2 overflow-hidden max-h-12">${thread.content.substring(0, 150)}...</p>
+                            <div class="flex justify-between items-center mt-3">
+                                <span class="text-xs text-green-500">[ Respuestas: ${thread.replyCount || 0} ]</span>
+                                <button data-thread-id="${threadId}" class="reply-button terminal-button text-xs px-3 py-1 uppercase">
+                                    >> ACCEDER A LA DATA
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                    threadsContainer.insertAdjacentHTML('beforeend', threadCard);
+                });
+
+                // Añadir listeners a los nuevos botones de respuesta
+                document.querySelectorAll('.reply-button').forEach(button => {
+                    button.addEventListener('click', (e) => {
+                        const threadId = e.target.getAttribute('data-thread-id');
+                        openReplyModal(threadId);
+                    });
+                });
+            }, (error) => {
+                console.error("Error al cargar hilos:", error);
+                threadsContainer.innerHTML = '<p class="text-red-500">[ ERROR DE CONEXIÓN ] Fallo al cargar los hilos del foro.</p>';
+                noThreadsMsg.classList.add('hidden');
+            });
+        }
+
+        // 5. Lógica del Modal de Respuestas
+        let currentThreadId = null;
+        const modal = document.getElementById('reply-modal');
+        const repliesContainer = document.getElementById('replies-container');
+        const modalTitle = document.getElementById('modal-thread-title');
+        const modalContent = document.getElementById('modal-thread-content');
+        const postReplyBtn = document.getElementById('post-reply-btn');
+        const newReplyContent = document.getElementById('new-reply-content');
+        const replyErrorMsg = document.getElementById('reply-error-msg');
+
+        function openReplyModal(threadId) {
+            currentThreadId = threadId;
+            modal.classList.remove('hidden');
+            replyErrorMsg.classList.add('hidden');
+
+            // Cargar el hilo principal y configurar el listener de respuestas
+            const threadRef = doc(getThreadsCollectionRef(), threadId);
+
+            // Listener para el hilo principal (para título y contenido)
+            onSnapshot(threadRef, (docSnap) => {
+                if (docSnap.exists()) {
+                    const thread = docSnap.data();
+                    modalTitle.textContent = `ASUNTO: ${thread.title}`;
+                    modalContent.textContent = thread.content;
+                } else {
+                    modalTitle.textContent = 'Hilo no encontrado';
+                    modalContent.textContent = 'El hilo fue eliminado del bus de datos.';
+                }
+            });
+
+            // Listener para las respuestas del hilo
+            const repliesRef = collection(threadRef, "replies");
+            const qReplies = query(repliesRef, orderBy("timestamp", "asc"));
+
+            onSnapshot(qReplies, (snapshot) => {
+                repliesContainer.innerHTML = '';
+                if (snapshot.empty) {
+                    repliesContainer.innerHTML = '<p class="text-gray-500 text-sm italic">[ Sin respuestas, Sé el primero en inyectar datos. ]</p>';
+                } else {
+                    snapshot.forEach((doc) => {
+                        const reply = doc.data();
+                        const date = reply.timestamp ? new Date(reply.timestamp.seconds * 1000).toLocaleString('es-ES') : 'Desconocida';
+                        const replyElement = `
+                            <div class="border-l-2 border-green-500 pl-3 py-1 bg-gray-800 rounded">
+                                <p class="text-xs text-green-500">[ RE: ${reply.authorId} | ${date} ]</p>
+                                <p class="text-sm text-gray-300 whitespace-pre-wrap">${reply.content}</p>
+                            </div>
+                        `;
+                        repliesContainer.insertAdjacentHTML('beforeend', replyElement);
+                    });
+                }
+            }, (error) => {
+                console.error("Error al cargar respuestas:", error);
+                repliesContainer.innerHTML = '<p class="text-red-500">[ ERROR DE CONEXIÓN ] Fallo al cargar las respuestas.</p>';
+            });
+        }
+
+        // Lógica para enviar una respuesta
+        postReplyBtn.addEventListener('click', async () => {
+            if (!authReady || !userId || !currentThreadId) return;
+
+            const content = newReplyContent.value.trim();
+            if (content.length < 5) {
+                replyErrorMsg.textContent = 'Error: La respuesta debe tener al menos 5 caracteres.';
+                replyErrorMsg.classList.remove('hidden');
+                return;
+            }
+            replyErrorMsg.classList.add('hidden');
+
+            try {
+                // 1. Añadir la respuesta
+                const threadRef = doc(getThreadsCollectionRef(), currentThreadId);
+                const repliesRef = collection(threadRef, "replies");
+
+                await addDoc(repliesRef, {
+                    content: content,
+                    authorId: generateAnonId(userId),
+                    timestamp: serverTimestamp()
+                });
+
+                // 2. Actualizar el contador de respuestas del hilo principal usando una transacción
+                await runTransaction(db, async (transaction) => {
+                    const threadDoc = await transaction.get(threadRef);
+                    if (!threadDoc.exists()) {
+                        throw "Document does not exist!";
+                    }
+                    const newReplyCount = (threadDoc.data().replyCount || 0) + 1;
+                    transaction.update(threadRef, { replyCount: newReplyCount });
+                });
+
+
+                newReplyContent.value = ''; // Limpiar campo
+            } catch (e) {
+                console.error("Error al enviar respuesta o actualizar contador: ", e);
+                replyErrorMsg.textContent = 'Error de transmisión: No se pudo enviar la respuesta.';
+                replyErrorMsg.classList.remove('hidden');
+            }
+        });
+
+        // Botón para cerrar el modal
+        document.getElementById('close-modal-btn').addEventListener('click', () => {
+            modal.classList.add('hidden');
+            currentThreadId = null;
+            // Opcional: limpiar listeners (aunque onSnapshot se limpia automáticamente en la desconexión si se maneja bien)
+        });
+
+    </script>
 </body>
 </html>
