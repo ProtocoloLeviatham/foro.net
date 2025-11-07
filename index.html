@@ -39,7 +39,7 @@
             text-shadow: 0 0 8px #0F0;
             white-space: pre;
             text-align: center;
-            animation: glitch 1.5s infinite steps(1); /* Aplica el efecto de glitch */
+            animation: glitch 1.5s infinite steps(1); 
         }
         
         /* ------------------------------------- */
@@ -92,7 +92,8 @@
 
         #terminal-screen {
             background-color: rgba(0, 0, 0, 0.95);
-            border: 2px solid #F0F; /* Magenta - Toque Dark Web */
+            /* Usamos Magenta para un toque Dark Web */
+            border: 2px solid #F0F; 
             box-shadow: 0 0 30px #F0F, inset 0 0 15px #F0F;
             animation: terminal-flicker 0.1s infinite alternate;
         }
@@ -102,14 +103,13 @@
             50% { opacity: 0.99; }
             100% { opacity: 1; }
         }
-                
+            
         .typewriter-text {
             overflow: hidden;
             white-space: nowrap;
             width: 0;
-            /* Las animaciones de typing y cursor-blink se definen aquí */
             animation: typing 0.05s steps(1) forwards,
-                       cursor-blink 0.75s step-end infinite;
+                        cursor-blink 0.75s step-end infinite;
         }
 
         @keyframes typing {
@@ -141,8 +141,9 @@
         }
 
         .hacker-input:focus, .hacker-textarea:focus {
-            box-shadow: 0 0 15px #0F0 !important;
-            border-color: #0F0;
+            /* Usamos Magenta para el foco Darknet */
+            box-shadow: 0 0 15px #F0F !important; 
+            border-color: #F0F;
         }
 
         .hacker-btn {
@@ -175,8 +176,9 @@
             <p class="typewriter-text" style="animation-delay: 0s;">[+] INICIANDO CONEXIÓN SEGURA A RED OBSCENA...</p>
             <p class="typewriter-text mt-2" style="animation-delay: 1.5s;">[+] BUSCANDO NODO: 10.1.34.89 (TOR)...</p>
             <p class="typewriter-text mt-2 text-error" style="animation-delay: 3s;">[!] ERROR: AUTH_TIMEOUT. REINTENTANDO CON FUERZA BRUTA...</p>
-            <p class="typewriter-text mt-2 text-success" style="animation-delay: 5s;">[+] ACCESO CONCEDIDO. DECRYPTING DATA STREAM...</p>
-            <p class="typewriter-text mt-2 text-success" style="animation-delay: 6.5s;">[>>] CARGANDO INTERFAZ DE FORO LEVIATHAM...</p>
+            <p class="typewriter-text mt-2 text-red-500" style="animation-delay: 4.5s;">[>>] BYPASSING SECURITY SYSTEM: system404g...</p>
+            <p class="typewriter-text mt-2 text-success" style="animation-delay: 6s;">[+] ACCESO CONCEDIDO. DECRYPTING DATA STREAM...</p>
+            <p class="typewriter-text mt-2 text-success" style="animation-delay: 7.5s;">[>>] CARGANDO INTERFAZ DE FORO LEVIATHAM...</p>
         </div>
     </div>
 
@@ -197,13 +199,13 @@
 [ Iniciando Codificación ]
                       
                       .'.. /|
-                     / |  //
-                   _.'./.'./
-                  ( LEVIATHAM )
-                   \_`\_`\_/
-                     / / /
-                    | | |
-                    \_/
+                      / |  //
+                    _.'./.'./
+                   ( LEVIATHAM )
+                    \_`\_`\_/
+                      / / /
+                      | | |
+                      \_/
                       
 [ Status: Online ]
 [ Industrias Lazarus ]
@@ -229,6 +231,12 @@
                         <div id="posts-container" class="space-y-4">
                             <p class="text-gray-600">Buscando Hilos de Datos...</p>
                         </div>
+                    </section>
+                    
+                    <section id="pagination-container" class="mt-6">
+                        <button id="load-more-btn" class="hacker-btn w-full text-red-500 border-red-500 hover:text-white hover:bg-red-500 transition" style="display: none;">
+                            $ NEXT_PAGE 20+
+                        </button>
                     </section>
                 </div>
 
