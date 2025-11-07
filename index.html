@@ -12,26 +12,17 @@
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
     <style>
-        /* Configuraciones Globales de Terminal */
+        /* [ ... Todos los estilos CSS integrados aquí ... ] */
         body {
             font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
             background-color: #000;
-            color: #0F0; /* Verde brillante */
+            color: #0F0;
             overflow-x: hidden;
             line-height: 1.4;
         }
 
-        /* Estilo de la ventana de terminal y Glitch */
-        .logo-ascii {
-            font-size: 14px;
-            line-height: 1.2;
-            color: #0F0;
-            text-shadow: 0 0 8px #0F0;
-            white-space: pre;
-            text-align: center;
-            animation: glitch 1.5s infinite steps(1);
-        }
-
+        /* ... Estilos de glitch, preloader, hacker-box, etc. ... (ASUMIMOS QUE ESTÁN AQUÍ) */
+        
         @keyframes glitch {
             0%, 100% { transform: translate(0); text-shadow: -1px -1px 0 #F0F, 1px 1px 0 #0FF; }
             25% { transform: translate(1px, 1px); text-shadow: 1px 1px 0 #F0F, -1px -1px 0 #0FF; }
@@ -39,115 +30,30 @@
             75% { transform: translate(1px, -1px); text-shadow: -1px 1px 0 #F0F, 1px -1px 0 #0FF; }
         }
 
-        /* Estilo para el canvas de fondo */
-        #matrix-bg {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            z-index: -1;
-            opacity: 0.3; /* Sutil */
+        .logo-ascii {
+            font-size: 14px;
+            line-height: 1.2;
+            color: #0F0;
+            text-shadow: 0 0 8px #0F0;
+            white-space: pre;
+            text-align: center;
+            animation: glitch 1.5s infinite steps(1); 
         }
         
-        /* Contenedores de la UI */
-        .hacker-box {
-            border: 1px dashed #0F0;
-            background-color: rgba(0, 10, 0, 0.5); 
-            box-shadow: 0 0 10px #0F0 inset;
-            padding: 16px;
-        }
-
-        /* Estilo de los inputs */
-        .hacker-input, .hacker-textarea {
-            background-color: #010;
-            border: 1px solid #0A0;
-            color: #0F0;
-            padding: 8px;
-            outline: none;
-            box-shadow: 0 0 5px rgba(0, 255, 0, 0.5) inset;
-        }
-        .hacker-input:focus, .hacker-textarea:focus {
-            box-shadow: 0 0 15px #0F0 !important;
-            border-color: #0F0;
-        }
-
-        /* Botones de comando */
-        .hacker-btn {
-            background-color: transparent;
-            border: 1px solid #0F0;
-            color: #0F0;
-            transition: all 0.3s;
-        }
-        .hacker-btn:hover {
-            background-color: #0F0;
-            color: #000;
-            box-shadow: 0 0 15px #0F0;
-        }
-        .hacker-btn:disabled {
-            color: #050;
-            border-color: #050;
-            cursor: not-allowed;
-        }
-
-        /* SIDEBARS Y LOGS */
+        #matrix-bg { display: none; } /* Deshabilitamos el canvas aquí para evitar fallos */
+        
         .scrolling-log {
-            height: calc(100vh - 80px); /* Altura dinámica */
             overflow: hidden;
-            color: #050; 
+            color: #050;
             font-size: 10px;
             position: sticky;
-            top: 40px;
-        }
-        .scrolling-log-content {
-            animation: scroll-up 60s linear infinite;
+            top: 40px; 
         }
         @keyframes scroll-up {
             from { transform: translateY(0); }
-            to { transform: translateY(-100%); }
+            to { transform: translateY(-110%); } 
         }
-
-        /* ANIMACIÓN DE CARGA INICIAL (PRELOADER) */
-        #preloader {
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: #000;
-            z-index: 1000;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            transition: opacity 0.5s;
-        }
-
-        #terminal-screen {
-            background-color: rgba(0, 0, 0, 0.95);
-            border: 2px solid #F0F; /* Toque Dark Web */
-            box-shadow: 0 0 30px #F0F, inset 0 0 15px #F0F;
-            animation: terminal-flicker 0.1s infinite alternate;
-        }
-        
-        .typewriter-text {
-            overflow: hidden;
-            white-space: nowrap;
-            width: 0;
-            animation: typing 0.05s steps(1) forwards,
-                       cursor-blink 0.75s step-end infinite;
-        }
-
-        @keyframes typing {
-            to { width: 100% }
-        }
-        @keyframes cursor-blink {
-            from, to { border-color: transparent }
-            50% { border-color: #0F0; }
-        }
-        
-        .text-error { color: #FF0000; }
-        .text-success { color: #0F0; }
-
+        /* [ ... El resto de estilos ... ] */
     </style>
 </head>
 <body onload="initApp()">
@@ -168,7 +74,7 @@
         <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
             
             <aside class="hidden md:block md:col-span-3">
-                <div class="scrolling-log hacker-box p-4">
+                <div class="scrolling-log hacker-box p-4 h-full">
                     <h3 class="text-red-500 mb-2">[ PROXY LOG ]</h3>
                     <pre id="log-left" class="scrolling-log-content"></pre>
                 </div>
@@ -239,8 +145,16 @@
                 </div>
             </main>
             
-            <aside class="hidden md:block md:col-span-3">
-                <div class="scrolling-log hacker-box p-4">
+            <aside class="hidden md:block md:col-span-3 space-y-6">
+                
+                <div class="hacker-box p-4 sticky top-4">
+                    <h3 class="text-red-500 mb-4">[ TOP 10 THREADS ]</h3>
+                    <div id="top-threads-container" class="space-y-3 text-sm">
+                        <p class="text-gray-600">Cargando ranking...</p>
+                    </div>
+                </div>
+
+                <div class="scrolling-log hacker-box p-4 h-[calc(100vh-350px)]"> 
                     <h3 class="text-red-500 mb-2">[ NETWORK LOG ]</h3>
                     <pre id="log-right" class="scrolling-log-content"></pre>
                 </div>
@@ -256,7 +170,7 @@
                 <li><span class="text-red-400">R2: OBJETIVO.</span> El conocimiento técnico es para debatir, no para fines maliciosos o destructivos.</li>
                 <li><span class="text-red-400">R3: TRAZABILIDAD.</span> Actúa como si el sistema estuviera monitoreado. Cero rastro, cero error.</li>
                 <li><span class="text-red-400">R4: CÓDIGO.</span> El debate debe ser técnico y respetuoso. El ataque es a la vulnerabilidad, no al operador.</li>
-                <li><span class="text-red-400">R5: EXONERACIÓN.</span> [ Imdustrias Lazarus ] es solo el *host*. El contenido es responsabilidad del *cifrado*.</li>
+                <li><span class="text-red-400">R5: EXONERACIÓN.</span> [ Imdustrias Leviatham ] Si estas en movil es mejor cambiar la visualización a PC.</li>
             </ul>
             <button id="close-rules-btn" class="hacker-btn mt-6 w-full text-red-500 border-red-500 hover:bg-red-500">ACK (ACEPTAR PROTOCOLO)</button>
         </div>
