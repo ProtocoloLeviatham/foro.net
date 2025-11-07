@@ -32,6 +32,12 @@ const repliesContainer = document.getElementById('replies-container');
 const topThreadsContainer = document.getElementById('top-threads-container');
 const submitThreadBtn = document.getElementById('submit-thread-btn');
 const matrixCanvas = document.getElementById('matrix-canvas');
+const paginationControls = document.getElementById('pagination-controls');
+
+// Parámetros de Paginación
+const REPLIES_PER_PAGE = 20;
+let currentThreadId = null;
+let currentThreadData = null;
 
 
 // -----------------------------------------------------
@@ -45,7 +51,7 @@ function initMatrixEffect() {
     matrixCanvas.height = window.innerHeight;
     matrixCanvas.width = window.innerWidth;
     
-    const chinese = '0123456789ABCDEF';
+    const chinese = '0123456789ABCDEF!$%^&*'; // Caracteres más "Hacker"
     const font_size = 10;
     const columns = matrixCanvas.width / font_size;
     const drops = [];
@@ -55,36 +61,29 @@ function initMatrixEffect() {
     }
     
     function draw() {
-        // Fondo negro con opacidad para el efecto de rastro
         ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
         ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
         
         // Estilo de texto: Morado vibrante
-        ctx.fillStyle = '#8A2BE2'; // Morado
+        ctx.fillStyle = '#C0C0FF'; // Púrpura más claro para mejor visibilidad
         ctx.font = font_size + 'px monospace';
         
         for (let i = 0; i < drops.length; i++) {
-            // El carácter aleatorio
             const text = chinese[Math.floor(Math.random() * chinese.length)];
             
-            // Dibujar el texto
             ctx.fillText(text, i * font_size, drops[i] * font_size);
             
-            // Si la gota ha caído fuera de la pantalla
             if (drops[i] * font_size > matrixCanvas.height && Math.random() > 0.975) {
-                drops[i] = 0; // Reiniciar
+                drops[i] = 0; 
             }
             
-            // Incrementar la coordenada Y
             drops[i]++;
         }
     }
     
-    // Intervalo de actualización (más rápido para un efecto intenso)
     return setInterval(draw, 33);
 }
 
-// Iniciar el efecto Matrix
 window.addEventListener('resize', () => {
     matrixCanvas.height = window.innerHeight;
     matrixCanvas.width = window.innerWidth;
@@ -119,11 +118,11 @@ function showRankingView() {
     threadListView.style.display = 'none';
     threadDetailView.style.display = 'none';
     rankingView.style.display = 'block';
-    loadTopThreadsByReplies(); // Cargar ranking por comentarios
+    loadTopThreadsByReplies(); 
 }
 
 // -----------------------------------------------------
-// 03. ANIMACIÓN DE INICIO (CORREGIDA Y PULIDA)
+// 03. ANIMACIÓN DE INICIO (PULIDA)
 // -----------------------------------------------------
 
 function initPreloader() {
@@ -135,19 +134,19 @@ function initPreloader() {
         
         setTimeout(() => {
             preloader.style.display = 'none';
-            // Al terminar la carga, mostrar el modal de reglas para la aceptación forzosa
+            // Mostrar el modal de reglas para la aceptación forzosa
             rulesModal.style.display = 'flex'; 
-            loadThreads(); 
         }, 1000); // 1 segundo para el desvanecimiento
     }, animationDuration);
 }
 
 
 // -----------------------------------------------------
-// 04. GESTIÓN DE DATOS (FIREBASE) - LIKES ELIMINADOS
+// 04. GESTIÓN DE DATOS (FIREBASE)
 // -----------------------------------------------------
 
 function publishThread() {
+    // ... (Lógica de publicación de hilo se mantiene igual)
     const authorInput = document.getElementById('thread-author');
     const contentInput = document.getElementById('thread-content');
 
@@ -167,7 +166,6 @@ function publishThread() {
         content: content,
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
         replyCount: 0,
-        // Eliminado: likes: 0
     })
     .then(() => {
         contentInput.value = ''; 
@@ -183,6 +181,7 @@ function publishThread() {
         submitThreadBtn.textContent = "EXECUTE (INIT)";
     });
 }
+
 
 function publishReply(threadId) {
     const authorInput = document.getElementById('reply-author');
@@ -202,6 +201,7 @@ function publishReply(threadId) {
 
     const repliesCollection = threadsCollection.doc(threadId).collection('replies');
     
+    // **USAMOS BATCH/TRANSACCIÓN PARA GARANTIZAR LA INTEGRIDAD DEL CONTADOR**
     db.runTransaction((transaction) => {
         // 1. Añadir la respuesta
         transaction.set(repliesCollection.doc(), {
@@ -210,7 +210,7 @@ function publishReply(threadId) {
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         
-        // 2. Incrementar el contador del hilo padre (CRÍTICO: ASEGURAR INCREMENTO DE +1)
+        // 2. Incrementar el contador del hilo padre
         const threadRef = threadsCollection.doc(threadId);
         transaction.update(threadRef, {
             replyCount: firebase.firestore.FieldValue.increment(1)
@@ -219,12 +219,16 @@ function publishReply(threadId) {
         return Promise.resolve(); 
     })
     .then(() => {
+        // Si la transacción es exitosa, limpiamos y recargamos
         contentInput.value = ''; 
         authorInput.value = '';
+        // Al completar, forzamos la carga de la primera página (o la última si es relevante)
+        // Por simplicidad, recargamos la vista del detalle:
+        displayThread(currentThreadId, currentThreadData); 
     })
     .catch((error) => {
         console.error("> ERROR AL PUBLICAR RESPUESTA (TRANSACCIÓN):", error);
-        alert("ERROR: Fallo de transacción. [Code: 500]");
+        alert("ERROR CRÍTICO: Fallo al registrar respuesta. [Code: 500]");
     })
     .finally(() => {
         replyButton.disabled = false;
@@ -234,6 +238,7 @@ function publishReply(threadId) {
 
 
 function loadThreads() {
+    // ... (Lógica de carga de hilos principales se mantiene igual)
     postsContainer.innerHTML = '<p class="text-gray-600">Buscando Hilos de Datos...</p>';
 
     threadsCollection.orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
@@ -279,7 +284,6 @@ function loadThreads() {
 function loadTopThreadsByReplies() {
     topThreadsContainer.innerHTML = '<p class="text-gray-600">Buscando ranking por actividad...</p>';
 
-    // Ranking: Ordenar por replyCount (MÁS COMENTADOS)
     threadsCollection.orderBy('replyCount', 'desc').limit(10).onSnapshot((snapshot) => {
         topThreadsContainer.innerHTML = '';
         
@@ -292,11 +296,15 @@ function loadTopThreadsByReplies() {
             const threadData = doc.data();
             const threadId = doc.id;
             const replies = threadData.replyCount || 0;
+            
+            // Convertir threadData a string y manejar comillas para el onclick (CORRECCIÓN CRÍTICA)
+            // Se usa encodeURIComponent para evitar problemas de sintaxis con el JSON en el HTML
+            const encodedThreadData = encodeURIComponent(JSON.stringify(threadData));
 
             const threadElement = document.createElement('div');
             threadElement.className = 'flex flex-col sm:flex-row justify-between items-start sm:items-center p-2 border-b border-gray-800 cursor-pointer hover:bg-gray-900 transition';
             threadElement.innerHTML = `
-                <div class="flex items-center flex-1 mb-1 sm:mb-0" onclick="displayThread('${threadId}', ${JSON.stringify(threadData).replace(/'/g, "\\'")})">
+                <div class="flex items-center flex-1 mb-1 sm:mb-0" onclick="displayThread('${threadId}', JSON.parse(decodeURIComponent('${encodedThreadData}')))">
                     <span class="text-yellow-400 font-bold w-4">${index + 1}.</span>
                     <span class="truncate text-green-400 flex-1 ml-2">
                         ${threadData.content.substring(0, 40)}...
@@ -312,8 +320,11 @@ function loadTopThreadsByReplies() {
     });
 }
 
+
 function displayThread(threadId, threadData) {
     showDetailView(threadId);
+    currentThreadId = threadId;
+    currentThreadData = threadData; // Guardar datos para re-carga después del reply
 
     const threadContentDiv = document.getElementById('current-thread-content');
     const replyButton = document.getElementById('reply-button');
@@ -331,43 +342,98 @@ function displayThread(threadId, threadData) {
         </div>
     `;
 
-    // Configurar respuesta y cargar replies...
-    const replyAuthorInput = document.getElementById('reply-author');
-    const replyContentInput = document.getElementById('reply-content');
+    // Configurar el botón de respuesta
     replyButton.onclick = () => publishReply(threadId);
 
-    loadReplies(threadId);
+    // Cargar la primera página de respuestas
+    loadReplies(threadId, 1);
     lucide.createIcons();
 }
 
-// (loadReplies se mantiene igual)
-function loadReplies(threadId) {
+/**
+ * Genera y maneja la paginación de respuestas
+ */
+function loadReplies(threadId, pageNumber = 1) {
     repliesContainer.innerHTML = '<p class="text-gray-600">Buscando Respuestas de Datos...</p>';
-    const repliesCollection = threadsCollection.doc(threadId).collection('replies');
+    paginationControls.innerHTML = ''; // Limpiar controles de paginación
     
-    repliesCollection.orderBy('timestamp', 'asc').onSnapshot((snapshot) => {
-        repliesContainer.innerHTML = '';
-        
-        snapshot.forEach((doc) => {
-            const replyData = doc.data();
-            const timestampStr = formatTimestamp(replyData.timestamp);
-            
-            const replyElement = document.createElement('div');
-            replyElement.className = 'p-3 border-l-2 border-green-500 bg-black bg-opacity-30';
-            replyElement.innerHTML = `
-                <div class="text-xs text-green-400 mb-1">
-                    > Transmisión de ${replyData.author} [${timestampStr}]
-                </div>
-                <p class="text-sm">${replyData.content}</p>
-            `;
-            
-            repliesContainer.appendChild(replyElement);
-        });
+    const repliesCollection = threadsCollection.doc(threadId).collection('replies');
+    const offset = (pageNumber - 1) * REPLIES_PER_PAGE;
 
-        if (snapshot.empty) {
-            repliesContainer.innerHTML = '<p class="text-center text-gray-600">-- SUB-DIRECTORIO VACÍO --</p>';
-        }
-    });
+    // 1. Obtener el total para calcular el número de páginas (basado en replyCount del hilo padre)
+    const totalReplies = currentThreadData ? currentThreadData.replyCount || 0 : 0;
+    const totalPages = Math.ceil(totalReplies / REPLIES_PER_PAGE);
+
+    // 2. Obtener solo las respuestas de la página actual
+    repliesCollection
+        .orderBy('timestamp', 'asc')
+        .limit(REPLIES_PER_PAGE)
+        .offset(offset)
+        .get()
+        .then((snapshot) => {
+            repliesContainer.innerHTML = '';
+            
+            snapshot.forEach((doc) => {
+                const replyData = doc.data();
+                const timestampStr = formatTimestamp(replyData.timestamp);
+                
+                const replyElement = document.createElement('div');
+                replyElement.className = 'p-3 border-l-2 border-green-500 bg-black bg-opacity-30';
+                replyElement.innerHTML = `
+                    <div class="text-xs text-green-400 mb-1">
+                        > Transmisión de ${replyData.author} [${timestampStr}]
+                    </div>
+                    <p class="text-sm">${replyData.content}</p>
+                `;
+                
+                repliesContainer.appendChild(replyElement);
+            });
+
+            if (snapshot.empty && pageNumber === 1) {
+                repliesContainer.innerHTML = '<p class="text-center text-gray-600">-- SUB-DIRECTORIO VACÍO --</p>';
+            }
+            
+            // 3. Generar controles de paginación si hay más de una página
+            if (totalPages > 1) {
+                renderPagination(threadId, totalPages, pageNumber);
+            }
+        })
+        .catch(error => {
+            console.error("Error al cargar respuestas paginadas:", error);
+            repliesContainer.innerHTML = '<p class="text-center text-red-500">ERROR: Fallo al cargar los fragmentos de datos.</p>';
+        });
+}
+
+function renderPagination(threadId, totalPages, currentPage) {
+    paginationControls.innerHTML = '';
+
+    // Botón Anterior
+    if (currentPage > 1) {
+        const prevBtn = document.createElement('button');
+        prevBtn.className = 'hacker-btn pagination-btn';
+        prevBtn.innerHTML = `<span data-lucide="chevrons-left" class="w-4 h-4 inline-block"></span> PREV`;
+        prevBtn.onclick = () => loadReplies(threadId, currentPage - 1);
+        paginationControls.appendChild(prevBtn);
+    }
+
+    // Botones de Página
+    for (let i = 1; i <= totalPages; i++) {
+        const pageBtn = document.createElement('button');
+        pageBtn.className = `hacker-btn pagination-btn ${i === currentPage ? 'active' : ''}`;
+        pageBtn.textContent = `[ ${i} ]`;
+        pageBtn.onclick = () => loadReplies(threadId, i);
+        paginationControls.appendChild(pageBtn);
+    }
+
+    // Botón Siguiente
+    if (currentPage < totalPages) {
+        const nextBtn = document.createElement('button');
+        nextBtn.className = 'hacker-btn pagination-btn';
+        nextBtn.innerHTML = `NEXT <span data-lucide="chevrons-right" class="w-4 h-4 inline-block"></span>`;
+        nextBtn.onclick = () => loadReplies(threadId, currentPage + 1);
+        paginationControls.appendChild(nextBtn);
+    }
+    lucide.createIcons();
 }
 
 // -----------------------------------------------------
@@ -375,12 +441,11 @@ function loadReplies(threadId) {
 // -----------------------------------------------------
 
 function initApp() {
-    // Generar ID anónimo (estable)
     const userId = localStorage.getItem('user-id') || 'Cipher_' + Math.random().toString(36).substring(2, 8).toUpperCase();
     localStorage.setItem('user-id', userId);
     document.getElementById('user-id-display').textContent = userId;
 
-    // Iniciar el efecto Matrix
+    // Iniciar el efecto Matrix (Ahora es el Z-index 0, siempre visible)
     initMatrixEffect();
     
     // Control de modales y botones
@@ -399,6 +464,4 @@ function initApp() {
     initPreloader();
     lucide.createIcons();
 }
-
-
 
