@@ -7,74 +7,142 @@
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module" src="https://unpkg.com/lucide-react@latest/dist/umd/lucide.js"></script>
-    
+    <script nomodule src="https://unpkg.com/lucide-react@latest/dist/umd/lucide.min.js"></script>
+
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 
     <style>
-        /* [ ... Todos los estilos CSS integrados aquí ... ] */
+        /* 1. CONFIGURACIÓN BASE */
         body {
             font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
             background-color: #000;
             color: #0F0;
             overflow-x: hidden;
             line-height: 1.4;
+            min-height: 100vh;
         }
+        .main-container { position: relative; z-index: 10; }
 
-        /* ... Estilos de glitch, preloader, hacker-box, etc. ... (ASUMIMOS QUE ESTÁN AQUÍ) */
+        /* Deshabilitamos el canvas, pero mantenemos el div para consistencia con el código anterior */
+        #matrix-bg { display: none; } 
         
+        /* 2. ESTÉTICA HACKER: GLITCH Y ASCII */
         @keyframes glitch {
-            0%, 100% { transform: translate(0); text-shadow: -1px -1px 0 #F0F, 1px 1px 0 #0FF; }
-            25% { transform: translate(1px, 1px); text-shadow: 1px 1px 0 #F0F, -1px -1px 0 #0FF; }
-            50% { transform: translate(-1px, 1px); text-shadow: 1px -1px 0 #F0F, -1px 1px 0 #0FF; }
-            75% { transform: translate(1px, -1px); text-shadow: -1px 1px 0 #F0F, 1px -1px 0 #0FF; }
+            0%, 100% { text-shadow: -1px -1px 0 #F0F, 1px 1px 0 #0FF; opacity: 1; }
+            25% { text-shadow: 1px 1px 0 #F0F, -1px -1px 0 #0FF; }
+            50% { text-shadow: 1px -1px 0 #F0F, -1px 1px 0 #0FF; }
+            75% { text-shadow: -1px 1px 0 #F0F, 1px -1px 0 #0FF; }
+            90% { opacity: 0.8; }
         }
 
         .logo-ascii {
-            font-size: 14px;
-            line-height: 1.2;
-            color: #0F0;
-            text-shadow: 0 0 8px #0F0;
-            white-space: pre;
-            text-align: center;
-            animation: glitch 1.5s infinite steps(1); 
+            font-size: 14px; line-height: 1.2; color: #0F0;
+            text-shadow: 0 0 5px #0F0; white-space: pre;
+            text-align: center; animation: glitch 1.5s infinite steps(1);
         }
+
+        /* 3. UI PERSONALIZADA (Hacker-Box, Inputs, Botones) */
+        .hacker-box {
+            border: 1px solid #0F0;
+            background-color: rgba(0, 10, 0, 0.5); 
+            box-shadow: 0 0 10px #0F0 inset;
+            padding: 16px; border-radius: 0;
+        }
+        .hacker-input, .hacker-textarea {
+            background-color: #010; border: 1px solid #0A0; color: #0F0;
+            padding: 8px; width: 100%; border-radius: 0; outline: none;
+            transition: all 0.3s;
+        }
+        .hacker-input:focus, .hacker-textarea:focus {
+            box-shadow: 0 0 15px #0F0; border-color: #0F0;
+        }
+        .hacker-btn {
+            background-color: transparent; border: 1px solid #0F0;
+            color: #0F0; padding: 8px 16px; cursor: pointer;
+            transition: all 0.3s; border-radius: 0;
+        }
+        .hacker-btn:hover { background-color: #0F0; color: #000; box-shadow: 0 0 15px #0F0; }
+        .hacker-btn:disabled { color: #050; border-color: #050; cursor: not-allowed; }
         
-        #matrix-bg { display: none; } /* Deshabilitamos el canvas aquí para evitar fallos */
-        
+        /* 4. LOGS Y SCAN LINE (Efectos Visuales) */
         .scrolling-log {
-            overflow: hidden;
-            color: #050;
-            font-size: 10px;
-            position: sticky;
-            top: 40px; 
+            height: 100vh; overflow: hidden; color: #050; 
+            font-size: 12px; position: sticky; top: 0; 
         }
-        @keyframes scroll-up {
-            from { transform: translateY(0); }
-            to { transform: translateY(-110%); } 
+        .scrolling-log-content { animation: scroll-up 60s linear infinite; }
+        @keyframes scroll-up { from { transform: translateY(0); } to { transform: translateY(-100%); } }
+
+        .scan-line {
+            position: fixed; top: 0; left: 0; width: 100%; height: 3px; 
+            background: #0F0; opacity: 0.3; animation: scan 4s linear infinite; 
+            z-index: 1000; pointer-events: none;
         }
-        /* [ ... El resto de estilos ... ] */
+        @keyframes scan { 0% { top: 0%; } 100% { top: 100%; } }
+
+        /* 5. PRELOADER (Carga tipo Terminal mejorada) */
+        #preloader {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: #000; z-index: 1000; display: flex;
+            align-items: center; justify-content: center; transition: opacity 0.5s;
+            border: 5px solid #F0F; /* Borde oscuro para el efecto */
+            box-shadow: 0 0 50px rgba(255, 0, 255, 0.5); /* Resplandor */
+        }
+        .typewriter-text {
+            overflow: hidden; white-space: nowrap; width: 0;
+            border-right: 0.15em solid #0F0; /* Cursor */
+            animation: typing 0.05s steps(1) forwards, cursor-blink 0.75s step-end infinite;
+        }
+        @keyframes typing { to { width: 100% } }
+        @keyframes cursor-blink {
+            from, to { border-right-color: transparent }
+            50% { border-right-color: #0F0; }
+        }
+        .text-error { color: #FF0000; }
+        .text-success { color: #0F0; }
+
+        /* Estilo para los botones de like cuando se presionan */
+        .like-btn:active {
+            transform: scale(0.95);
+            box-shadow: 0 0 10px #F0F;
+        }
+
     </style>
 </head>
 <body onload="initApp()">
-    <canvas id="matrix-bg"></canvas>
     
+    <div class="scan-line"></div>
+
     <div id="preloader">
-        <div id="terminal-screen" class="p-8 w-11/12 md:w-1/2">
-            <p class="typewriter-text" style="animation-delay: 0s;">[+] INICIANDO CONEXIÓN SEGURA A RED OBSCENA...</p>
-            <p class="typewriter-text mt-2" style="animation-delay: 1.5s;">[+] BUSCANDO NODO: 10.1.34.89 (TOR)...</p>
-            <p class="typewriter-text mt-2 text-error" style="animation-delay: 3s;">[!] ERROR: AUTH_TIMEOUT. REINTENTANDO CON FUERZA BRUTA...</p>
-            <p class="typewriter-text mt-2 text-success" style="animation-delay: 5s;">[+] ACCESO CONCEDIDO. DECRYPTING DATA STREAM...</p>
-            <p class="typewriter-text mt-2 text-success" style="animation-delay: 6.5s;">[>>] CARGANDO INTERFAZ DE FORO LEVIATHAM...</p>
+        <div class="p-8 w-11/12 md:w-1/2 bg-black bg-opacity-90">
+            <p class="typewriter-text text-red-500" style="animation-delay: 0s;">[>>] INICIANDO SECUENCIA CRÍTICA: TOR_CONNECT...</p>
+            <p class="typewriter-text mt-2" style="animation-delay: 1.5s;">[+] VERIFICANDO NODO: 10.1.34.89 (ANONYMOUS_PROXY)...</p>
+            <p class="typewriter-text mt-2 text-error" style="animation-delay: 3s;">[!] ERROR: AUTH_TIMEOUT. EJECUTANDO FUERZA BRUTA (SSH)...</p>
+            <p class="typewriter-text mt-2 text-success" style="animation-delay: 5s;">[+] INTRUSIÓN COMPLETA. ENCRYPTING_STREAM: OK</p>
+            <p class="typewriter-text mt-2 text-success" style="animation-delay: 6.5s;">[>>] CARGANDO INTERFAZ LEVIATHAM V2.0...</p>
         </div>
     </div>
 
+    <div id="rules-modal" class="p-4">
+        <div class="hacker-box max-w-lg w-full relative">
+            <h2 class="text-2xl text-red-500 mb-4 font-bold">[ ! PROTOCOLO DE ACCESO: DENIED IF VIOLATED ! ]</h2>
+            <ul class="list-disc list-inside space-y-3 text-sm">
+                <li><span class="text-red-400">R1: ANONIMATO.</span> La identidad es un cifrado. No compartas datos personales o de terceros.</li>
+                <li><span class="text-red-400">R2: OBJETIVO.</span> El conocimiento técnico es para debatir, no para fines maliciosos o destructivos.</li>
+                <li><span class="text-red-400">R3: TRAZABILIDAD.</span> Actúa como si el sistema estuviera monitoreado. Cero rastro, cero error.</li>
+                <li><span class="text-red-400">R4: CÓDIGO.</span> El debate debe ser técnico y respetuoso. El ataque es a la vulnerabilidad, no al operador.</li>
+                <li><span class="text-red-400">R5: EXONERACIÓN.</span> [ Imdustrias Lazarus ] es solo el *host*. El contenido es responsabilidad del *cifrado*.</li>
+            </ul>
+            <button id="close-rules-btn" class="hacker-btn mt-6 w-full text-red-500 border-red-500 hover:bg-red-500">ACK (ACEPTAR PROTOCOLO)</button>
+        </div>
+    </div>
+    
     <div id="content-wrapper" class="hidden main-container min-h-screen p-4 md:p-8">
         
         <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
             
             <aside class="hidden md:block md:col-span-3">
-                <div class="scrolling-log hacker-box p-4 h-full">
+                <div class="scrolling-log hacker-box p-4 h-full sticky top-0">
                     <h3 class="text-red-500 mb-2">[ PROXY LOG ]</h3>
                     <pre id="log-left" class="scrolling-log-content"></pre>
                 </div>
@@ -101,6 +169,12 @@
                     <div class="flex justify-center gap-4 mt-4 text-sm">
                         <span class="text-green-400">ID: <span id="user-id-display">N/A</span></span>
                         <button id="show-rules-btn" class="text-red-500 hover:text-red-300 transition">[ ! PROTOCOLO ]</button>
+                    </div>
+
+                    <div class="mt-4">
+                        <button id="show-ranking-btn" onclick="showRankingView()" class="hacker-btn text-yellow-400 border-yellow-400 hover:bg-yellow-400 hover:text-black transition">
+                            <span data-lucide="star" class="w-4 h-4 inline-block mr-2"></span> MEJORES HILOS (TOP 10)
+                        </button>
                     </div>
                 </header>
                 
@@ -143,39 +217,36 @@
                             </div>
                     </div>
                 </div>
+
+                <div id="ranking-view" style="display: none;">
+                    <button onclick="showListView()" class="hacker-btn mb-6 text-red-500 border-red-500 hover:text-white hover:bg-red-500 transition">
+                        <span data-lucide="arrow-left" class="w-4 h-4 inline-block mr-2"></span> $ cd ..
+                    </button>
+
+                    <section id="top-threads-section" class="hacker-box">
+                        <h2 class="text-2xl mb-4 text-yellow-400 font-bold">[ $ cat /data/top_10.log ]</h2>
+                        <p class="text-sm text-gray-500 mb-4">Ranking de transmisiones más votadas por los operadores.</p>
+                        <div id="top-threads-container" class="space-y-3">
+                            <p class="text-gray-600">Cargando ranking...</p>
+                        </div>
+                    </section>
+                </div>
             </main>
             
-            <aside class="hidden md:block md:col-span-3 space-y-6">
-                
-                <div class="hacker-box p-4 sticky top-4">
-                    <h3 class="text-red-500 mb-4">[ TOP 10 THREADS ]</h3>
-                    <div id="top-threads-container" class="space-y-3 text-sm">
-                        <p class="text-gray-600">Cargando ranking...</p>
-                    </div>
-                </div>
-
-                <div class="scrolling-log hacker-box p-4 h-[calc(100vh-350px)]"> 
+            <aside class="hidden md:block md:col-span-3">
+                <div class="scrolling-log hacker-box p-4 h-full sticky top-0">
                     <h3 class="text-red-500 mb-2">[ NETWORK LOG ]</h3>
                     <pre id="log-right" class="scrolling-log-content"></pre>
                 </div>
             </aside>
         </div>
     </div>
-    
-    <div id="rules-modal" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-95 z-50 hidden flex justify-center items-center p-4">
-        <div class="hacker-box max-w-xl w-full relative">
-            <h2 class="text-2xl text-red-500 mb-4 font-bold">[ ! PROTOCOLO DE ACCESO: DENIED IF VIOLATED ! ]</h2>
-            <ul class="list-disc list-inside space-y-3 text-sm">
-                <li><span class="text-red-400">R1: ANONIMATO.</span> La identidad es un cifrado. No compartas datos personales o de terceros.</li>
-                <li><span class="text-red-400">R2: OBJETIVO.</span> El conocimiento técnico es para debatir, no para fines maliciosos o destructivos.</li>
-                <li><span class="text-red-400">R3: TRAZABILIDAD.</span> Actúa como si el sistema estuviera monitoreado. Cero rastro, cero error.</li>
-                <li><span class="text-red-400">R4: CÓDIGO.</span> El debate debe ser técnico y respetuoso. El ataque es a la vulnerabilidad, no al operador.</li>
-                <li><span class="text-red-400">R5: EXONERACIÓN.</span> [ Imdustrias Leviatham ] Si estas en movil es mejor cambiar la visualización a PC.</li>
-            </ul>
-            <button id="close-rules-btn" class="hacker-btn mt-6 w-full text-red-500 border-red-500 hover:bg-red-500">ACK (ACEPTAR PROTOCOLO)</button>
-        </div>
-    </div>
 
     <script src="script.js"></script>
 </body>
 </html>
+
+    <script src="script.js"></script>
+</body>
+</html>
+
