@@ -13,15 +13,18 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const threadsCollection = db.collection("threads");
 
-// Intentar activar persistencia offline
+// 🚨 CORRECCIÓN CLAVE PARA MÓVILES: Intentar activar persistencia offline
+// Esto ayuda a que Firestore gestione mejor la conexión en entornos inestables o móviles.
 db.enablePersistence()
-    .catch((err) => {
-        if (err.code == 'failed-precondition') {
-            console.warn("Firestore Persistencia NO activada (Múltiples pestañas).");
-        } else if (err.code == 'unimplemented') {
-            console.warn("Firestore Persistencia NO soportada por este navegador.");
-        }
-    });
+  .catch((err) => {
+    if (err.code == 'failed-precondition') {
+        // Múltiples pestañas abiertas, no se puede activar.
+        console.warn("Firestore Persistencia NO activada (Múltiples pestañas).");
+    } else if (err.code == 'unimplemented') {
+        // El navegador no lo soporta (ej. Edge/IE).
+        console.warn("Firestore Persistencia NO soportada por este navegador.");
+    }
+  });
 
 // Referencias a elementos de la UI
 const threadListView = document.getElementById('thread-list-view');
@@ -32,12 +35,6 @@ const rulesModal = document.getElementById('rules-modal');
 const submitThreadBtn = document.getElementById('submit-thread-btn');
 const postsContainer = document.getElementById('posts-container');
 const repliesContainer = document.getElementById('replies-container');
-const loadMoreBtn = document.getElementById('load-more-btn');
-
-// --- VARIABLES DE PAGINACIÓN ---
-const THREADS_PER_PAGE = 20;
-let lastVisibleThread = null; // Último documento visible para la paginación
-let isFirstLoad = true; // Para gestionar el mensaje inicial de carga
 
 // -----------------------------------------------------
 // 01. GESTIÓN DE VISTAS Y UTILIDADES
@@ -46,13 +43,14 @@ let isFirstLoad = true; // Para gestionar el mensaje inicial de carga
 function formatTimestamp(timestamp) {
     if (!timestamp) return 'Timestamp no disponible';
     const date = timestamp.toDate();
-    if (isNaN(date)) return 'Fecha inválida';
-    return date.toLocaleString('es-ES', {
-        year: 'numeric',
-        month: '2-digit',
-        day: '2-digit',
-        hour: '2-digit',
-        minute: '2-digit'
+    // Mejorar la robustez del manejo de fechas
+    if (isNaN(date)) return 'Fecha inválida'; 
+    return date.toLocaleString('es-ES', { 
+        year: 'numeric', 
+        month: '2-digit', 
+        day: '2-digit', 
+        hour: '2-digit', 
+        minute: '2-digit' 
     });
 }
 
@@ -71,26 +69,27 @@ function showListView() {
 // -----------------------------------------------------
 
 function initPreloader() {
-    // 9s es el tiempo total de la animación de tipeo (ajustado por la nueva línea)
-    const animationDuration = 9000; 
+    // 7.5s es el tiempo total de la animación de tipeo
+    const animationDuration = 7500; 
 
     setTimeout(() => {
         preloader.style.opacity = '0';
         setTimeout(() => {
             preloader.style.display = 'none';
             contentWrapper.classList.remove('hidden');
-
+            
+            // Mostrar modal de reglas y cargar datos después de la intro
             rulesModal.style.display = 'flex';
-            loadThreadsWithPagination(); 
+            loadThreads(); // Iniciar carga de datos
         }, 500);
     }, animationDuration);
 }
 
-// Inicializar Canvas (Efecto Matrix de fondo - Color Morado/Magenta #F0F)
+// Inicializar Canvas (Efecto Matrix de fondo)
 function initMatrixCanvas() {
     const canvas = document.getElementById('matrix-bg');
-    if (!canvas || !canvas.getContext) return;
-
+    if (!canvas || !canvas.getContext) return; // Doble chequeo para estabilidad
+    
     const ctx = canvas.getContext('2d');
     canvas.width = window.innerWidth;
     canvas.height = window.innerHeight;
@@ -105,11 +104,10 @@ function initMatrixCanvas() {
     }
 
     function draw() {
-        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)'; 
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
         ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Color de la lluvia: #F0F (Magenta/Morado)
-        ctx.fillStyle = '#F0F';
+        ctx.fillStyle = '#0F0'; 
         ctx.font = font_size + 'px monospace';
 
         for (let i = 0; i < drops.length; i++) {
@@ -141,7 +139,7 @@ function generateRandomLog(id) {
         const code = Math.random().toString(16).substring(2, 8).toUpperCase();
         logContent += `${type} ${code} ${Math.random() < 0.2 ? 'ACCESS DENIED' : 'OK'} - ${Math.random().toString(36).substring(2, 10)}\n`;
     }
-    logElement.textContent = logContent + logContent;
+    logElement.textContent = logContent + logContent; 
 }
 
 // -----------------------------------------------------
@@ -152,7 +150,7 @@ function publishThread() {
     const authorInput = document.getElementById('thread-author');
     const contentInput = document.getElementById('thread-content');
 
-    const author = authorInput.value.trim() || 'Anonimo Cifrado';
+    const author = authorInput.value.trim() || 'Anonimo Cifrado'; 
     const content = contentInput.value.trim();
 
     if (content.length < 10) {
@@ -162,20 +160,18 @@ function publishThread() {
 
     submitThreadBtn.disabled = true;
     submitThreadBtn.textContent = "TRANSMITIENDO...";
-
+    
     threadsCollection.add({
         author: author,
         content: content,
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        replyCount: 0
+        replyCount: 0 
     })
     .then((docRef) => {
         console.log(`> Transmisión enviada. ID: ${docRef.id}`);
-        contentInput.value = '';
+        contentInput.value = ''; 
         authorInput.value = '';
-        // Forzar recarga para ver el nuevo hilo en la primera página
-        alert("Transmisión Enviada [ACK/200]. Recargando lista..."); 
-        window.location.reload(); 
+        alert("Transmisión Enviada [ACK/200]");
     })
     .catch((error) => {
         console.error("> ERROR DE ESCRITURA:", error);
@@ -205,20 +201,20 @@ function publishReply(threadId) {
     replyButton.textContent = "EJECUTANDO...";
 
     const repliesCollection = threadsCollection.doc(threadId).collection('replies');
-
+    
     repliesCollection.add({
         author: author,
         content: content,
         timestamp: firebase.firestore.FieldValue.serverTimestamp()
     })
     .then(() => {
-        // Incrementa el contador del hilo padre (uso de reglas de seguridad)
+        // Incrementa el contador del hilo padre
         threadsCollection.doc(threadId).update({
             replyCount: firebase.firestore.FieldValue.increment(1)
         });
-
+        
         console.log(`> Respuesta enviada a Hilo: ${threadId}`);
-        contentInput.value = '';
+        contentInput.value = ''; 
     })
     .catch((error) => {
         console.error("> ERROR AL PUBLICAR RESPUESTA:", error);
@@ -231,42 +227,14 @@ function publishReply(threadId) {
 }
 
 
-// -----------------------------------------------------
-// 04. CARGA DE HILOS CON PAGINACIÓN (20 HILOS POR PÁGINA)
-// -----------------------------------------------------
+function loadThreads() {
+    postsContainer.innerHTML = '<p class="text-gray-600">Buscando Hilos de Datos...</p>';
 
-function loadThreadsWithPagination() {
-    loadMoreBtn.disabled = true;
-    loadMoreBtn.textContent = "CARGANDO DATOS...";
-    
-    // Solo mostramos el mensaje de carga en el primer intento
-    if (isFirstLoad) {
-        postsContainer.innerHTML = '<p class="text-gray-600">Buscando Hilos de Datos...</p>';
-    }
-
-    let query = threadsCollection.orderBy('timestamp', 'desc').limit(THREADS_PER_PAGE);
-
-    // Si ya cargamos una página, empezamos después del último hilo
-    if (lastVisibleThread) {
-        query = query.startAfter(lastVisibleThread);
-    }
-    
-    // Si es la primera carga, limpiamos el contenedor antes de añadir
-    if (isFirstLoad) {
+    // Usamos onSnapshot que ya funcionaba
+    threadsCollection.orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
         postsContainer.innerHTML = '';
-        isFirstLoad = false;
-    }
-
-    query.get().then((documentSnapshots) => {
-        // Ocultar botón de "Cargar Más" por defecto
-        loadMoreBtn.style.display = 'none';
-
-        if (documentSnapshots.empty && postsContainer.innerHTML === '') {
-            postsContainer.innerHTML = '<p class="text-center text-gray-600">-- DIRECTORIO VACÍO. INICIE TRANSMISIÓN --</p>';
-            return;
-        }
-
-        documentSnapshots.forEach((doc) => {
+        
+        snapshot.forEach((doc) => {
             const threadData = doc.data();
             const threadId = doc.id;
             const timestampStr = formatTimestamp(threadData.timestamp);
@@ -283,34 +251,22 @@ function loadThreadsWithPagination() {
                     Operador: ${threadData.author} | Respuestas: ${threadData.replyCount || 0}
                 </div>
             `;
-
+            
             threadElement.addEventListener('click', () => {
                 displayThread(threadId, threadData);
             });
-
+            
             postsContainer.appendChild(threadElement);
         });
         
-        // Almacena el último documento visible para la próxima página
-        lastVisibleThread = documentSnapshots.docs[documentSnapshots.docs.length - 1];
-        
-        // Muestra el botón si hay 20 resultados (indicando que puede haber más)
-        if (documentSnapshots.size === THREADS_PER_PAGE) {
-            loadMoreBtn.style.display = 'block';
-            loadMoreBtn.disabled = false;
-            loadMoreBtn.textContent = "$ NEXT_PAGE 20+";
-        } else {
-             loadMoreBtn.textContent = "-- FINAL DE ARCHIVOS --";
+        if (snapshot.empty) {
+            postsContainer.innerHTML = '<p class="text-center text-gray-600">-- DIRECTORIO VACÍO. INICIE TRANSMISIÓN --</p>';
         }
-        
-    }).catch((error) => {
-        console.error("Error al cargar hilos:", error);
+    }, (error) => {
+        console.error("Error al escuchar hilos:", error);
         postsContainer.innerHTML = '<p class="text-center text-error">ERROR DE CONEXIÓN. Código: 503</p>';
-        loadMoreBtn.textContent = "ERROR DE CONEXIÓN";
-        loadMoreBtn.disabled = true;
     });
 }
-
 
 function displayThread(threadId, threadData) {
     showDetailView();
@@ -318,7 +274,7 @@ function displayThread(threadId, threadData) {
     const threadContentDiv = document.getElementById('current-thread-content');
     const replyButton = document.getElementById('reply-button');
     const timestampStr = formatTimestamp(threadData.timestamp);
-
+    
     // Contenido del hilo principal
     threadContentDiv.innerHTML = `
         <h3 class="text-xl text-red-400 mb-2 font-bold">[ HILO CIFRADO: ${threadId} ]</h3>
@@ -338,15 +294,14 @@ function displayThread(threadId, threadData) {
 function loadReplies(threadId) {
     repliesContainer.innerHTML = '<p class="text-gray-600">Buscando Respuestas de Datos...</p>';
     const repliesCollection = threadsCollection.doc(threadId).collection('replies');
-
-    // Mantenemos onSnapshot para que las respuestas se actualicen en tiempo real
+    
     repliesCollection.orderBy('timestamp', 'asc').onSnapshot((snapshot) => {
         repliesContainer.innerHTML = '';
-
+        
         snapshot.forEach((doc) => {
             const replyData = doc.data();
             const timestampStr = formatTimestamp(replyData.timestamp);
-
+            
             const replyElement = document.createElement('div');
             replyElement.className = 'p-3 border-l-2 border-green-500 bg-black bg-opacity-30';
             replyElement.innerHTML = `
@@ -355,7 +310,7 @@ function loadReplies(threadId) {
                 </div>
                 <p class="text-sm">${replyData.content}</p>
             `;
-
+            
             repliesContainer.appendChild(replyElement);
         });
 
@@ -370,7 +325,7 @@ function loadReplies(threadId) {
 }
 
 // -----------------------------------------------------
-// 05. INICIALIZACIÓN FINAL
+// 04. INICIALIZACIÓN FINAL
 // -----------------------------------------------------
 
 function initApp() {
@@ -378,10 +333,10 @@ function initApp() {
     initMatrixCanvas();
     generateRandomLog('log-left');
     generateRandomLog('log-right');
-
+    
     // Generar ID anónimo para el usuario (simulación)
     document.getElementById('user-id-display').textContent = 'Cipher_' + Math.random().toString(36).substring(2, 8).toUpperCase();
-
+    
     // Configurar modal de reglas
     document.getElementById('close-rules-btn').addEventListener('click', () => {
         rulesModal.style.display = 'none';
@@ -389,11 +344,7 @@ function initApp() {
     document.getElementById('show-rules-btn').addEventListener('click', () => {
         rulesModal.style.display = 'flex';
     });
-
-    // Listener para el botón de cargar más (IMPORTANTE)
-    document.getElementById('load-more-btn').addEventListener('click', loadThreadsWithPagination);
-
-
+    
     // Iniciar la secuencia de carga
     initPreloader();
 }
