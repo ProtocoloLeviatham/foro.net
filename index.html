@@ -4,28 +4,181 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>~/.config/LEVIATHAM.conf - Terminal Cifrada</title>
-    <link rel="stylesheet" href="style.css">
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script type="module" src="https://unpkg.com/lucide-react@latest/dist/umd/lucide.js"></script>
     
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
+
+    <style>
+        /* Configuraciones Globales de Terminal */
+        body {
+            font-family: 'Menlo', 'Monaco', 'Courier New', monospace;
+            background-color: #000;
+            color: #0F0; /* Verde brillante */
+            overflow-x: hidden;
+            line-height: 1.4;
+        }
+
+        /* Estilo de la ventana de terminal y Glitch */
+        .logo-ascii {
+            font-size: 14px;
+            line-height: 1.2;
+            color: #0F0;
+            text-shadow: 0 0 8px #0F0;
+            white-space: pre;
+            text-align: center;
+            animation: glitch 1.5s infinite steps(1);
+        }
+
+        @keyframes glitch {
+            0%, 100% { transform: translate(0); text-shadow: -1px -1px 0 #F0F, 1px 1px 0 #0FF; }
+            25% { transform: translate(1px, 1px); text-shadow: 1px 1px 0 #F0F, -1px -1px 0 #0FF; }
+            50% { transform: translate(-1px, 1px); text-shadow: 1px -1px 0 #F0F, -1px 1px 0 #0FF; }
+            75% { transform: translate(1px, -1px); text-shadow: -1px 1px 0 #F0F, 1px -1px 0 #0FF; }
+        }
+
+        /* Estilo para el canvas de fondo */
+        #matrix-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            opacity: 0.3; /* Sutil */
+        }
+        
+        /* Contenedores de la UI */
+        .hacker-box {
+            border: 1px dashed #0F0;
+            background-color: rgba(0, 10, 0, 0.5); 
+            box-shadow: 0 0 10px #0F0 inset;
+            padding: 16px;
+        }
+
+        /* Estilo de los inputs */
+        .hacker-input, .hacker-textarea {
+            background-color: #010;
+            border: 1px solid #0A0;
+            color: #0F0;
+            padding: 8px;
+            outline: none;
+            box-shadow: 0 0 5px rgba(0, 255, 0, 0.5) inset;
+        }
+        .hacker-input:focus, .hacker-textarea:focus {
+            box-shadow: 0 0 15px #0F0 !important;
+            border-color: #0F0;
+        }
+
+        /* Botones de comando */
+        .hacker-btn {
+            background-color: transparent;
+            border: 1px solid #0F0;
+            color: #0F0;
+            transition: all 0.3s;
+        }
+        .hacker-btn:hover {
+            background-color: #0F0;
+            color: #000;
+            box-shadow: 0 0 15px #0F0;
+        }
+        .hacker-btn:disabled {
+            color: #050;
+            border-color: #050;
+            cursor: not-allowed;
+        }
+
+        /* SIDEBARS Y LOGS */
+        .scrolling-log {
+            height: calc(100vh - 80px); /* Altura dinámica */
+            overflow: hidden;
+            color: #050; 
+            font-size: 10px;
+            position: sticky;
+            top: 40px;
+        }
+        .scrolling-log-content {
+            animation: scroll-up 60s linear infinite;
+        }
+        @keyframes scroll-up {
+            from { transform: translateY(0); }
+            to { transform: translateY(-100%); }
+        }
+
+        /* ANIMACIÓN DE CARGA INICIAL (PRELOADER) */
+        #preloader {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            z-index: 1000;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: opacity 0.5s;
+        }
+
+        #terminal-screen {
+            background-color: rgba(0, 0, 0, 0.95);
+            border: 2px solid #F0F; /* Toque Dark Web */
+            box-shadow: 0 0 30px #F0F, inset 0 0 15px #F0F;
+            animation: terminal-flicker 0.1s infinite alternate;
+        }
+        
+        .typewriter-text {
+            overflow: hidden;
+            white-space: nowrap;
+            width: 0;
+            animation: typing 0.05s steps(1) forwards,
+                       cursor-blink 0.75s step-end infinite;
+        }
+
+        @keyframes typing {
+            to { width: 100% }
+        }
+        @keyframes cursor-blink {
+            from, to { border-color: transparent }
+            50% { border-color: #0F0; }
+        }
+        
+        .text-error { color: #FF0000; }
+        .text-success { color: #0F0; }
+
+    </style>
 </head>
-<body>
+<body onload="initApp()">
+    <canvas id="matrix-bg"></canvas>
+    
     <div id="preloader">
-        <div id="terminal-screen">
-            <p>> [INIT] Booting LEVIATHAM secure module...</p>
-            <p>> [STATUS] Checking kernel integrity... **OK**</p>
-            <p>> [AUTH] Bypassing primary access controls...</p>
-            <p>> [NETWORK] Establishing TOR circuit 0x01...</p>
-            <p class="blink">> connection established. running 'forum_interface.sh'</p>
+        <div id="terminal-screen" class="p-8 w-11/12 md:w-1/2">
+            <p class="typewriter-text" style="animation-delay: 0s;">[+] INICIANDO CONEXIÓN SEGURA A RED OBSCENA...</p>
+            <p class="typewriter-text mt-2" style="animation-delay: 1.5s;">[+] BUSCANDO NODO: 10.1.34.89 (TOR)...</p>
+            <p class="typewriter-text mt-2 text-error" style="animation-delay: 3s;">[!] ERROR: AUTH_TIMEOUT. REINTENTANDO CON FUERZA BRUTA...</p>
+            <p class="typewriter-text mt-2 text-success" style="animation-delay: 5s;">[+] ACCESO CONCEDIDO. DECRYPTING DATA STREAM...</p>
+            <p class="typewriter-text mt-2 text-success" style="animation-delay: 6.5s;">[>>] CARGANDO INTERFAZ DE FORO LEVIATHAM...</p>
         </div>
     </div>
-    
-    <div id="content-wrapper" class="hidden">
-        <div class="monitor-frame">
-            <header class="glitch-text" id="main-header">
-                <pre class="logo">
-                [ Iniciando Codificación ]
-                
+
+    <div id="content-wrapper" class="hidden main-container min-h-screen p-4 md:p-8">
+        
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-6">
+            
+            <aside class="hidden md:block md:col-span-3">
+                <div class="scrolling-log hacker-box p-4">
+                    <h3 class="text-red-500 mb-2">[ PROXY LOG ]</h3>
+                    <pre id="log-left" class="scrolling-log-content"></pre>
+                </div>
+            </aside>
+
+            <main class="md:col-span-6">
+                <header class="text-center mb-8">
+                    <pre class="logo-ascii">
+[ Iniciando Codificación ]
+                      
                       .'.. /|
                      / |  //
                    _.'./.'./
@@ -34,50 +187,81 @@
                      / / /
                     | | |
                     \_/
-                
-                [ Status: Online ]
-                [ Industrias Lazarus ]
-                      [ KaliHunter32 ]</pre>
-            </header>
-
-            <main id="forum-container">
-                <div id="thread-list-view">
-                    <div id="new-thread-form" class="forum-box">
-                        <h2>> Escribir Transmisión (Anon)</h2>
-                        <input type="text" id="thread-author" placeholder="Alias (Opcional, 'Anonimo' por defecto)">
-                        <textarea id="thread-content" placeholder="Escribe tu mensaje/hilo cifrado aquí..."></textarea>
-                        <button onclick="publishThread()">ENVIAR_DATOS (ACK)</button>
+                      
+[ Status: Online ]
+[ Industrias Lazarus ]
+                      [ KaliHunter32 ]
+                    </pre>
+                    <div class="flex justify-center gap-4 mt-4 text-sm">
+                        <span class="text-green-400">ID: <span id="user-id-display">N/A</span></span>
+                        <button id="show-rules-btn" class="text-red-500 hover:text-red-300 transition">[ ! PROTOCOLO ]</button>
                     </div>
-
-                    <div id="threads-list" class="forum-box">
-                        <h2>> $ ls -l /data/threads</h2>
+                </header>
+                
+                <div id="thread-list-view">
+                    
+                    <section id="new-post-form" class="hacker-box mb-8">
+                        <h2 class="text-lg mb-4 text-green-400 font-bold">[ $ POST_THREAD -a 'Anon' ]</h2>
+                        <textarea id="thread-content" class="hacker-textarea w-full mb-4" rows="4" placeholder="Escribe tu mensaje/hilo cifrado aquí..."></textarea>
+                        <input type="text" id="thread-author" class="hacker-input w-full mb-4" placeholder="Alias (Opcional, 'Anonimo' por defecto)">
+                        <button onclick="publishThread()" class="hacker-btn w-full" id="submit-thread-btn">EXECUTE (INIT)</button>
+                    </section>
+    
+                    <section id="threads-list" class="hacker-box">
+                        <h2 class="text-xl mb-4 text-green-400 font-bold">[ $ ls -l /data/threads ]</h2>
+                        <div id="posts-container" class="space-y-4">
+                            <p class="text-gray-600">Buscando Hilos de Datos...</p>
                         </div>
+                    </section>
                 </div>
 
                 <div id="thread-detail-view" style="display: none;">
-                    <button onclick="showListView()" class="back-button">< Volver a $ cd ..</button>
                     
-                    <div id="current-thread-content" class="forum-box">
+                    <button onclick="showListView()" class="hacker-btn mb-6 text-red-500 border-red-500 hover:text-white hover:bg-red-500 transition">
+                        <span data-lucide="arrow-left" class="w-4 h-4 inline-block mr-2"></span> $ cd ..
+                    </button>
+                    
+                    <div id="current-thread-content" class="hacker-box mb-6 border-red-500 shadow-red-500">
                         </div>
 
-                    <div id="reply-form" class="forum-box">
-                        <h2>> $ echo "Respuesta a Transmisión" >></h2>
-                        <input type="text" id="reply-author" placeholder="Alias (Opcional, 'Anonimo' por defecto)">
-                        <textarea id="reply-content" placeholder="Escribe tu respuesta aquí..."></textarea>
-                        <button id="reply-button">EJECUTAR (POST)</button>
+                    <div id="reply-form" class="hacker-box mb-6">
+                        <h2 class="text-lg mb-4 text-green-400 font-bold">[ $ ECHO_REPLY -a 'Anon' ]</h2>
+                        <textarea id="reply-content" class="hacker-textarea w-full mb-4" rows="3" placeholder="Escribe tu respuesta..."></textarea>
+                        <input type="text" id="reply-author" class="hacker-input w-full mb-4" placeholder="Alias (Opcional, 'Anonimo' por defecto)">
+                        <button id="reply-button" class="hacker-btn w-full text-green-400 border-green-400">EXECUTE (REPLY)</button>
                     </div>
 
-                    <div id="replies-list" class="forum-box">
-                        <h2>> $ cat /data/replies</h2>
-                        </div>
+                    <div id="replies-list" class="hacker-box">
+                        <h2 class="text-xl mb-4 text-green-400 font-bold">[ $ cat /data/replies ]</h2>
+                        <div id="replies-container" class="space-y-4">
+                            </div>
+                    </div>
                 </div>
             </main>
             
-            <div id="shadow-brooks-logo"></div> </div>
-        
-        <div id="matrix-overlay"></div>
+            <aside class="hidden md:block md:col-span-3">
+                <div class="scrolling-log hacker-box p-4">
+                    <h3 class="text-red-500 mb-2">[ NETWORK LOG ]</h3>
+                    <pre id="log-right" class="scrolling-log-content"></pre>
+                </div>
+            </aside>
+        </div>
     </div>
     
+    <div id="rules-modal" class="fixed top-0 left-0 w-full h-full bg-black bg-opacity-95 z-50 hidden flex justify-center items-center p-4">
+        <div class="hacker-box max-w-xl w-full relative">
+            <h2 class="text-2xl text-red-500 mb-4 font-bold">[ ! PROTOCOLO DE ACCESO: DENIED IF VIOLATED ! ]</h2>
+            <ul class="list-disc list-inside space-y-3 text-sm">
+                <li><span class="text-red-400">R1: ANONIMATO.</span> La identidad es un cifrado. No compartas datos personales o de terceros.</li>
+                <li><span class="text-red-400">R2: OBJETIVO.</span> El conocimiento técnico es para debatir, no para fines maliciosos o destructivos.</li>
+                <li><span class="text-red-400">R3: TRAZABILIDAD.</span> Actúa como si el sistema estuviera monitoreado. Cero rastro, cero error.</li>
+                <li><span class="text-red-400">R4: CÓDIGO.</span> El debate debe ser técnico y respetuoso. El ataque es a la vulnerabilidad, no al operador.</li>
+                <li><span class="text-red-400">R5: EXONERACIÓN.</span> [ Imdustrias Lazarus ] es solo el *host*. El contenido es responsabilidad del *cifrado*.</li>
+            </ul>
+            <button id="close-rules-btn" class="hacker-btn mt-6 w-full text-red-500 border-red-500 hover:bg-red-500">ACK (ACEPTAR PROTOCOLO)</button>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
 </html>
