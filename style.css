@@ -136,4 +136,23 @@ button:hover {
     font-size: 0.8em;
     color: #999;
     margin-bottom: 10px;
+
+}
+
+/* Estilos para el panel de administración */
+.admin-panel {
+    border: 2px dashed red;
+    box-shadow: 0 0 15px red;
+    margin-top: 30px;
+}
+
+.delete-button {
+    background-color: red;
+    color: white;
+    margin-top: 10px;
+}
+
+.delete-button:hover {
+    background-color: darkred;
+    box-shadow: 0 0 10px red;
 }
