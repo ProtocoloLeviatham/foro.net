@@ -13,10 +13,10 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const threadsCollection = db.collection("threads");
 
-// Intento robusto de persistencia
-db.enablePersistence().catch((err) => {
+// Intentar habilitar la persistencia de datos (guardado local)
+db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
     if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
-        console.warn("WARN: Persistencia de Firebase no disponible o fallida:", err);
+        console.warn("WARN: Persistencia de Firebase fallida:", err);
     }
 });
 
@@ -24,20 +24,16 @@ db.enablePersistence().catch((err) => {
 const preloader = document.getElementById('preloader');
 const contentWrapper = document.getElementById('content-wrapper');
 const rulesModal = document.getElementById('rules-modal');
-const threadListView = document.getElementById('thread-list-view');
-const threadDetailView = document.getElementById('thread-detail-view');
-const rankingView = document.getElementById('ranking-view');
 const postsContainer = document.getElementById('posts-container');
-const repliesContainer = document.getElementById('replies-container');
-const topThreadsContainer = document.getElementById('top-threads-container');
-const submitThreadBtn = document.getElementById('submit-thread-btn');
 const matrixCanvas = document.getElementById('matrix-canvas');
 const paginationControls = document.getElementById('pagination-controls');
 
-// Parámetros de Paginación
-const REPLIES_PER_PAGE = 20;
-let currentThreadId = null;
-let currentThreadData = null;
+// Parámetros de Paginación Global para Hilos
+const THREADS_PER_PAGE = 20;
+let lastVisible = null; // Último documento visible para paginación
+let firstVisible = null; // Primer documento visible para paginación (navegación inversa)
+let historySnapshot = []; // Almacenar el historial de 'lastVisible' para ir hacia atrás
+let currentPage = 1;
 
 
 // -----------------------------------------------------
@@ -51,7 +47,7 @@ function initMatrixEffect() {
     matrixCanvas.height = window.innerHeight;
     matrixCanvas.width = window.innerWidth;
     
-    const chinese = '0123456789ABCDEF!$%^&*'; // Caracteres más "Hacker"
+    const chinese = '0123456789ABCDEF!$%^&*#@';
     const font_size = 10;
     const columns = matrixCanvas.width / font_size;
     const drops = [];
@@ -64,13 +60,11 @@ function initMatrixEffect() {
         ctx.fillStyle = 'rgba(0, 0, 0, 0.05)';
         ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
         
-        // Estilo de texto: Morado vibrante
-        ctx.fillStyle = '#C0C0FF'; // Púrpura más claro para mejor visibilidad
+        ctx.fillStyle = '#C0C0FF'; // Púrpura más claro
         ctx.font = font_size + 'px monospace';
         
         for (let i = 0; i < drops.length; i++) {
             const text = chinese[Math.floor(Math.random() * chinese.length)];
-            
             ctx.fillText(text, i * font_size, drops[i] * font_size);
             
             if (drops[i] * font_size > matrixCanvas.height && Math.random() > 0.975) {
@@ -83,11 +77,6 @@ function initMatrixEffect() {
     
     return setInterval(draw, 33);
 }
-
-window.addEventListener('resize', () => {
-    matrixCanvas.height = window.innerHeight;
-    matrixCanvas.width = window.innerWidth;
-});
 
 // -----------------------------------------------------
 // 02. GESTIÓN DE VISTAS Y UTILIDADES
@@ -102,62 +91,60 @@ function formatTimestamp(timestamp) {
     });
 }
 
-function showListView() {
-    threadDetailView.style.display = 'none';
-    rankingView.style.display = 'none';
-    threadListView.style.display = 'block';
-}
-
-function showDetailView(threadId) {
-    threadListView.style.display = 'none';
-    rankingView.style.display = 'none';
-    threadDetailView.style.display = 'block';
-}
-
-function showRankingView() {
-    threadListView.style.display = 'none';
-    threadDetailView.style.display = 'none';
-    rankingView.style.display = 'block';
-    loadTopThreadsByReplies(); 
-}
 
 // -----------------------------------------------------
-// 03. ANIMACIÓN DE INICIO (PULIDA)
+// 03. ANIMACIÓN DE INICIO (CORRECCIÓN CRÍTICA DE ESTABILIDAD)
 // -----------------------------------------------------
 
 function initPreloader() {
-    // 9.5 segundos es la duración total del tipeo
-    const animationDuration = 9500; 
+    // Definición de las líneas y sus retrasos
+    const lines = [
+        { selector: '.loading-line:nth-child(1) span', delay: 0 },
+        { selector: '.loading-line:nth-child(2) span', delay: 2500 },
+        { selector: '.loading-line:nth-child(3) span', delay: 5000 },
+        { selector: '.loading-line:nth-child(4) span', delay: 7500 },
+        { selector: '.loading-line:nth-child(5) span', delay: 9000 },
+    ];
+
+    // Aplicar los estilos de animación a cada palabra/span
+    lines.forEach(line => {
+        const spans = document.querySelectorAll(line.selector);
+        spans.forEach((span, index) => {
+            // Cada palabra tiene un delay incremental para simular el tipeo
+            span.style.animationDelay = `${line.delay + (index * 80)}ms`;
+        });
+    });
+
+    const totalAnimationTime = 9500; // Duración total de la simulación
 
     setTimeout(() => {
         preloader.style.opacity = '0';
         
         setTimeout(() => {
             preloader.style.display = 'none';
-            // Mostrar el modal de reglas para la aceptación forzosa
             rulesModal.style.display = 'flex'; 
-        }, 1000); // 1 segundo para el desvanecimiento
-    }, animationDuration);
+        }, 500); // 0.5 segundo para el desvanecimiento
+    }, totalAnimationTime);
 }
 
 
 // -----------------------------------------------------
-// 04. GESTIÓN DE DATOS (FIREBASE)
+// 04. GESTIÓN DE DATOS Y PAGINACIÓN (FIREBASE)
 // -----------------------------------------------------
 
 function publishThread() {
-    // ... (Lógica de publicación de hilo se mantiene igual)
     const authorInput = document.getElementById('thread-author');
     const contentInput = document.getElementById('thread-content');
 
     const author = authorInput.value.trim() || 'Anonimo Cifrado'; 
     const content = contentInput.value.trim();
 
-    if (content.length < 15 || content.length > 500) {
-        alert("ERROR: El hilo debe tener entre 15 y 500 caracteres. [Code: 400]");
+    if (content.length < 15 || content.length > 1500) { // Límite de 1500 caracteres
+        alert("ERROR: El hilo debe tener entre 15 y 1500 caracteres. [Code: 400]");
         return;
     }
 
+    const submitThreadBtn = document.getElementById('submit-thread-btn');
     submitThreadBtn.disabled = true;
     submitThreadBtn.textContent = "TRANSMITIENDO...";
     
@@ -165,12 +152,13 @@ function publishThread() {
         author: author,
         content: content,
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        replyCount: 0,
     })
     .then(() => {
         contentInput.value = ''; 
         authorInput.value = '';
         alert("Transmisión Enviada [ACK/200]");
+        // Al publicar un nuevo hilo, forzamos la recarga de la primera página
+        loadThreads('first');
     })
     .catch((error) => {
         console.error("> ERROR DE ESCRITURA:", error);
@@ -182,257 +170,127 @@ function publishThread() {
     });
 }
 
+/**
+ * Carga los hilos con paginación basada en cursor.
+ * @param {string} direction 'next', 'prev', o 'first'.
+ */
+function loadThreads(direction = 'first') {
+    postsContainer.innerHTML = '<p class="text-gray-600">Buscando Hilos de Datos...</p>';
+    paginationControls.innerHTML = '';
 
-function publishReply(threadId) {
-    const authorInput = document.getElementById('reply-author');
-    const contentInput = document.getElementById('reply-content');
-    const replyButton = document.getElementById('reply-button');
+    let query = threadsCollection.orderBy('timestamp', 'desc').limit(THREADS_PER_PAGE);
 
-    const author = authorInput.value.trim() || 'Anonimo Cifrado';
-    const content = contentInput.value.trim();
+    if (direction === 'next' && lastVisible) {
+        query = query.startAfter(lastVisible);
+    } else if (direction === 'prev' && firstVisible) {
+        // Para ir hacia atrás, revertimos el orden, usamos startAfter(firstVisible), y luego revertimos la lista.
+        // También debemos usar el historial almacenado para un cursor fiable
+        
+        if (historySnapshot.length > 1) {
+            // El cursor para ir "atrás" es el penúltimo elemento del historial.
+            query = threadsCollection
+                .orderBy('timestamp', 'desc')
+                .endBefore(historySnapshot[historySnapshot.length - 2].cursor) // Usamos endBefore con el cursor anterior
+                .limitToLast(THREADS_PER_PAGE); // Y limitToLast para obtener los 20 anteriores
+        } else {
+             // Si el historial es 1 o menos, ya estamos en la primera página
+             direction = 'first';
+        }
 
-    if (content.length < 10) {
-        alert("ERROR: Respuesta demasiado corta. Mínimo 10 caracteres. [Code: 400]");
-        return;
+    } else if (direction === 'first') {
+        // Reiniciar la paginación
+        historySnapshot = [];
+        currentPage = 1;
     }
 
-    replyButton.disabled = true;
-    replyButton.textContent = "EJECUTANDO...";
-
-    const repliesCollection = threadsCollection.doc(threadId).collection('replies');
-    
-    // **USAMOS BATCH/TRANSACCIÓN PARA GARANTIZAR LA INTEGRIDAD DEL CONTADOR**
-    db.runTransaction((transaction) => {
-        // 1. Añadir la respuesta
-        transaction.set(repliesCollection.doc(), {
-            author: author,
-            content: content,
-            timestamp: firebase.firestore.FieldValue.serverTimestamp()
-        });
-        
-        // 2. Incrementar el contador del hilo padre
-        const threadRef = threadsCollection.doc(threadId);
-        transaction.update(threadRef, {
-            replyCount: firebase.firestore.FieldValue.increment(1)
-        });
-        
-        return Promise.resolve(); 
-    })
-    .then(() => {
-        // Si la transacción es exitosa, limpiamos y recargamos
-        contentInput.value = ''; 
-        authorInput.value = '';
-        // Al completar, forzamos la carga de la primera página (o la última si es relevante)
-        // Por simplicidad, recargamos la vista del detalle:
-        displayThread(currentThreadId, currentThreadData); 
-    })
-    .catch((error) => {
-        console.error("> ERROR AL PUBLICAR RESPUESTA (TRANSACCIÓN):", error);
-        alert("ERROR CRÍTICO: Fallo al registrar respuesta. [Code: 500]");
-    })
-    .finally(() => {
-        replyButton.disabled = false;
-        replyButton.textContent = "EXECUTE (REPLY)";
-    });
-}
-
-
-function loadThreads() {
-    // ... (Lógica de carga de hilos principales se mantiene igual)
-    postsContainer.innerHTML = '<p class="text-gray-600">Buscando Hilos de Datos...</p>';
-
-    threadsCollection.orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
+    query.get().then((snapshot) => {
         postsContainer.innerHTML = '';
+
+        if (snapshot.empty) {
+             postsContainer.innerHTML = `<p class="text-center text-gray-600">-- DIRECTORIO VACÍO ${direction !== 'first' ? '(FIN DE LA TRANSMISIÓN)' : ''} --</p>`;
+             renderPagination(false, false);
+             return;
+        }
+
+        // 1. Guardar los cursores para la siguiente/anterior paginación
+        firstVisible = snapshot.docs[0];
+        lastVisible = snapshot.docs[snapshot.docs.length - 1];
+
+        // 2. Manejar el historial de paginación
+        if (direction === 'next') {
+            currentPage++;
+            historySnapshot.push({ page: currentPage, cursor: firstVisible });
+        } else if (direction === 'prev') {
+            currentPage--;
+            // Removemos los dos últimos elementos (el cursor actual y el que usamos para ir atrás)
+            historySnapshot.pop(); 
+            historySnapshot.pop(); 
+        } else if (direction === 'first') {
+            currentPage = 1;
+            historySnapshot = [{ page: 1, cursor: firstVisible }];
+        }
         
+        // 3. Renderizar los hilos
         snapshot.forEach((doc) => {
             const threadData = doc.data();
             const threadId = doc.id;
             const timestampStr = formatTimestamp(threadData.timestamp);
-            const replies = threadData.replyCount || 0;
 
             const threadElement = document.createElement('div');
-            threadElement.className = 'p-3 border border-dashed border-gray-700 hover:border-green-500 transition cursor-pointer';
+            threadElement.className = 'p-3 border border-dashed border-gray-700 hover:border-green-500 transition';
             
             threadElement.innerHTML = `
                 <div class="flex justify-between text-sm mb-1">
-                    <span class="text-red-400 font-bold">[ THREAD_ID: ${threadId.substring(0, 6)}... ]</span>
+                    <span class="text-red-400 font-bold">[ THREAD_ID: ${threadId.substring(0, 8)}... ]</span>
                     <span class="text-gray-500">${timestampStr}</span>
                 </div>
-                <h3 class="text-white text-md font-bold hover:underline">${threadData.content.substring(0, 100)}${threadData.content.length > 100 ? '...' : ''}</h3>
-                <div class="flex justify-between items-center text-xs mt-2">
-                    <span class="text-green-400">Operador: ${threadData.author}</span>
-                    <span class="text-yellow-400">
-                        <span data-lucide="message-square" class="w-4 h-4 inline-block mr-1"></span> ${replies} RESPUESTAS
-                    </span>
-                </div>
+                <p class="text-white text-md">${threadData.content}</p>
+                <div class="text-xs mt-2 text-green-400">Operador: ${threadData.author}</div>
             `;
-            
-            threadElement.addEventListener('click', () => {
-                displayThread(threadId, threadData);
-            });
             
             postsContainer.appendChild(threadElement);
         });
         
-        if (snapshot.empty) {
-            postsContainer.innerHTML = '<p class="text-center text-gray-600">-- DIRECTORIO VACÍO. INICIE TRANSMISIÓN --</p>';
-        }
+        // 4. Renderizar controles
+        const hasNext = snapshot.docs.length === THREADS_PER_PAGE;
+        const hasPrev = currentPage > 1;
+
+        renderPagination(hasPrev, hasNext);
         lucide.createIcons();
-    });
-}
 
-function loadTopThreadsByReplies() {
-    topThreadsContainer.innerHTML = '<p class="text-gray-600">Buscando ranking por actividad...</p>';
-
-    threadsCollection.orderBy('replyCount', 'desc').limit(10).onSnapshot((snapshot) => {
-        topThreadsContainer.innerHTML = '';
-        
-        if (snapshot.empty) {
-            topThreadsContainer.innerHTML = '<p class="text-gray-600">No hay hilos rankeados por actividad aún.</p>';
-            return;
-        }
-
-        snapshot.forEach((doc, index) => {
-            const threadData = doc.data();
-            const threadId = doc.id;
-            const replies = threadData.replyCount || 0;
-            
-            // Convertir threadData a string y manejar comillas para el onclick (CORRECCIÓN CRÍTICA)
-            // Se usa encodeURIComponent para evitar problemas de sintaxis con el JSON en el HTML
-            const encodedThreadData = encodeURIComponent(JSON.stringify(threadData));
-
-            const threadElement = document.createElement('div');
-            threadElement.className = 'flex flex-col sm:flex-row justify-between items-start sm:items-center p-2 border-b border-gray-800 cursor-pointer hover:bg-gray-900 transition';
-            threadElement.innerHTML = `
-                <div class="flex items-center flex-1 mb-1 sm:mb-0" onclick="displayThread('${threadId}', JSON.parse(decodeURIComponent('${encodedThreadData}')))">
-                    <span class="text-yellow-400 font-bold w-4">${index + 1}.</span>
-                    <span class="truncate text-green-400 flex-1 ml-2">
-                        ${threadData.content.substring(0, 40)}...
-                    </span>
-                </div>
-                <span class="text-red-500 text-xs ml-6 sm:ml-2">
-                    <span data-lucide="message-square" class="w-3 h-3 inline-block"></span> ${replies} REPLIES
-                </span>
-            `;
-            topThreadsContainer.appendChild(threadElement);
-        });
-        lucide.createIcons();
+    }).catch(error => {
+        console.error("ERROR CRÍTICO al cargar hilos:", error);
+        postsContainer.innerHTML = `<p class="text-center text-red-500">ERROR CRÍTICO: Fallo de conexión a la Base de Datos. Code: ${error.code || 'UNKNOWN'}</p>`;
+        renderPagination(false, false);
     });
 }
 
 
-function displayThread(threadId, threadData) {
-    showDetailView(threadId);
-    currentThreadId = threadId;
-    currentThreadData = threadData; // Guardar datos para re-carga después del reply
-
-    const threadContentDiv = document.getElementById('current-thread-content');
-    const replyButton = document.getElementById('reply-button');
-    const timestampStr = formatTimestamp(threadData.timestamp);
-    const replies = threadData.replyCount || 0;
-
-    threadContentDiv.innerHTML = `
-        <h3 class="text-xl text-red-400 mb-2 font-bold">[ HILO CIFRADO: ${threadId} ]</h3>
-        <p class="mb-4">${threadData.content}</p>
-        <div class="flex justify-between items-center text-xs text-gray-500 mt-4">
-            <span>Operador: ${threadData.author} | Fecha/Hora: ${timestampStr}</span>
-            <span class="text-yellow-400">
-                <span data-lucide="message-square" class="w-4 h-4 inline-block mr-1"></span> REPLIES: ${replies}
-            </span>
-        </div>
-    `;
-
-    // Configurar el botón de respuesta
-    replyButton.onclick = () => publishReply(threadId);
-
-    // Cargar la primera página de respuestas
-    loadReplies(threadId, 1);
-    lucide.createIcons();
-}
-
-/**
- * Genera y maneja la paginación de respuestas
- */
-function loadReplies(threadId, pageNumber = 1) {
-    repliesContainer.innerHTML = '<p class="text-gray-600">Buscando Respuestas de Datos...</p>';
-    paginationControls.innerHTML = ''; // Limpiar controles de paginación
-    
-    const repliesCollection = threadsCollection.doc(threadId).collection('replies');
-    const offset = (pageNumber - 1) * REPLIES_PER_PAGE;
-
-    // 1. Obtener el total para calcular el número de páginas (basado en replyCount del hilo padre)
-    const totalReplies = currentThreadData ? currentThreadData.replyCount || 0 : 0;
-    const totalPages = Math.ceil(totalReplies / REPLIES_PER_PAGE);
-
-    // 2. Obtener solo las respuestas de la página actual
-    repliesCollection
-        .orderBy('timestamp', 'asc')
-        .limit(REPLIES_PER_PAGE)
-        .offset(offset)
-        .get()
-        .then((snapshot) => {
-            repliesContainer.innerHTML = '';
-            
-            snapshot.forEach((doc) => {
-                const replyData = doc.data();
-                const timestampStr = formatTimestamp(replyData.timestamp);
-                
-                const replyElement = document.createElement('div');
-                replyElement.className = 'p-3 border-l-2 border-green-500 bg-black bg-opacity-30';
-                replyElement.innerHTML = `
-                    <div class="text-xs text-green-400 mb-1">
-                        > Transmisión de ${replyData.author} [${timestampStr}]
-                    </div>
-                    <p class="text-sm">${replyData.content}</p>
-                `;
-                
-                repliesContainer.appendChild(replyElement);
-            });
-
-            if (snapshot.empty && pageNumber === 1) {
-                repliesContainer.innerHTML = '<p class="text-center text-gray-600">-- SUB-DIRECTORIO VACÍO --</p>';
-            }
-            
-            // 3. Generar controles de paginación si hay más de una página
-            if (totalPages > 1) {
-                renderPagination(threadId, totalPages, pageNumber);
-            }
-        })
-        .catch(error => {
-            console.error("Error al cargar respuestas paginadas:", error);
-            repliesContainer.innerHTML = '<p class="text-center text-red-500">ERROR: Fallo al cargar los fragmentos de datos.</p>';
-        });
-}
-
-function renderPagination(threadId, totalPages, currentPage) {
+function renderPagination(hasPrev, hasNext) {
     paginationControls.innerHTML = '';
-
+    
     // Botón Anterior
-    if (currentPage > 1) {
-        const prevBtn = document.createElement('button');
-        prevBtn.className = 'hacker-btn pagination-btn';
-        prevBtn.innerHTML = `<span data-lucide="chevrons-left" class="w-4 h-4 inline-block"></span> PREV`;
-        prevBtn.onclick = () => loadReplies(threadId, currentPage - 1);
-        paginationControls.appendChild(prevBtn);
-    }
+    const prevBtn = document.createElement('button');
+    prevBtn.className = 'hacker-btn pagination-btn';
+    prevBtn.innerHTML = `<span data-lucide="chevrons-left" class="w-4 h-4 inline-block"></span> PREV`;
+    prevBtn.disabled = !hasPrev;
+    prevBtn.onclick = () => loadThreads('prev');
+    paginationControls.appendChild(prevBtn);
 
-    // Botones de Página
-    for (let i = 1; i <= totalPages; i++) {
-        const pageBtn = document.createElement('button');
-        pageBtn.className = `hacker-btn pagination-btn ${i === currentPage ? 'active' : ''}`;
-        pageBtn.textContent = `[ ${i} ]`;
-        pageBtn.onclick = () => loadReplies(threadId, i);
-        paginationControls.appendChild(pageBtn);
-    }
+    // Indicador de página
+    const pageIndicator = document.createElement('span');
+    pageIndicator.className = 'text-yellow-400 font-bold';
+    pageIndicator.textContent = `[ PAGE ${currentPage} ]`;
+    paginationControls.appendChild(pageIndicator);
 
     // Botón Siguiente
-    if (currentPage < totalPages) {
-        const nextBtn = document.createElement('button');
-        nextBtn.className = 'hacker-btn pagination-btn';
-        nextBtn.innerHTML = `NEXT <span data-lucide="chevrons-right" class="w-4 h-4 inline-block"></span>`;
-        nextBtn.onclick = () => loadReplies(threadId, currentPage + 1);
-        paginationControls.appendChild(nextBtn);
-    }
+    const nextBtn = document.createElement('button');
+    nextBtn.className = 'hacker-btn pagination-btn';
+    nextBtn.innerHTML = `NEXT <span data-lucide="chevrons-right" class="w-4 h-4 inline-block"></span>`;
+    nextBtn.disabled = !hasNext;
+    nextBtn.onclick = () => loadThreads('next');
+    paginationControls.appendChild(nextBtn);
+    
     lucide.createIcons();
 }
 
@@ -441,27 +299,34 @@ function renderPagination(threadId, totalPages, currentPage) {
 // -----------------------------------------------------
 
 function initApp() {
+    // Generación de ID anónimo
     const userId = localStorage.getItem('user-id') || 'Cipher_' + Math.random().toString(36).substring(2, 8).toUpperCase();
     localStorage.setItem('user-id', userId);
     document.getElementById('user-id-display').textContent = userId;
 
-    // Iniciar el efecto Matrix (Ahora es el Z-index 0, siempre visible)
+    // Iniciar el efecto Matrix
     initMatrixEffect();
     
     // Control de modales y botones
     document.getElementById('close-rules-btn').addEventListener('click', () => {
         rulesModal.style.display = 'none';
         contentWrapper.classList.remove('hidden'); // Mostrar el contenido principal al ACEPTAR
+        loadThreads('first'); // Cargar la primera página de hilos
     });
     document.getElementById('show-rules-btn').addEventListener('click', () => {
         rulesModal.style.display = 'flex';
     });
     
-    submitThreadBtn.disabled = false;
-    submitThreadBtn.textContent = "EXECUTE (INIT)";
+    // Estado inicial del botón de publicación
+    document.getElementById('submit-thread-btn').disabled = false;
+    document.getElementById('submit-thread-btn').textContent = "EXECUTE (INIT)";
     
-    // Iniciar la secuencia de carga corregida
+    // Iniciar la secuencia de carga corregida y robusta
     initPreloader();
     lucide.createIcons();
 }
+
+
+
+
 
