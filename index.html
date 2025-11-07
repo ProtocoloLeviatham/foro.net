@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Anon-Net :: Interfaz Segura</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <div id="matrix-overlay"></div> <header>
+        <h1>[ ANON-NET ]</h1>
+        <p class="tagline">// Sesión de Intercambio Cifrado. Sin Rastro. Sin Login.</p>
+    </header>
+
+    <main>
+        <section id="post-creator" class="terminal-box glow">
+            <h2>> Nueva Transmisión</h2>
+            <form id="post-form">
+                <textarea id="post-content" placeholder="Escriba su mensaje anónimo aquí..." required rows="4"></textarea>
+                <button type="submit" class="hack-button">ENVIAR ENCRIPTADO</button>
+            </form>
+        </section>
+
+        <section id="forum-posts">
+            <h2>> Archivos Recibidos</h2>
+            <div id="posts-container">
+                </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>&copy; 2024. Protocolo A.N. V1.0 - Conexión Segura</p>
+    </footer>
+
+    <script src="app.js"></script> 
+</body>
+</html>
