@@ -1,6 +1,22 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+
+    <div id="admin-tools" class="forum-box admin-panel">
+        <h2>> Herramientas de Administrador (DEBUG)</h2>
+        <input type="password" id="admin-key-input" placeholder="Ingresa la Clave de Administrador...">
+        <button onclick="toggleAdminMode()" id="admin-toggle-button">ACTIVAR MODO</button>
+        
+        <div id="admin-controls-status" style="display: none;">
+            <p style="color: red;">[!] MODO ADMINISTRADOR ACTIVO [!]</p>
+            <input type="text" id="thread-id-to-delete" placeholder="ID del Hilo a Borrar">
+            <button onclick="deletePost('thread')" class="delete-button">BORRAR HILO POR ID</button>
+            <input type="text" id="reply-id-to-delete" placeholder="ID de la Respuesta a Borrar">
+            <input type="text" id="parent-thread-id" placeholder="ID del Hilo Padre">
+            <button onclick="deletePost('reply')" class="delete-button">BORRAR RESPUESTA POR ID</button>
+        </div>
+    </div>
+    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>LEVIATHAM - Foro Anónimo</title>
@@ -47,4 +63,5 @@
     
     <script src="script.js"></script>
 </body>
+
 </html>
