@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>./root/LEVIATHAM_FORUM.onion - Acceso Cifrado [STABLE BUILD]</title>
+    <title>./root/LEVIATHAM_FORUM.onion - Acceso Cifrado [STABLE FINAL]</title>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script type="module" src="https://unpkg.com/lucide-react@latest/dist/umd/lucide.js"></script>
@@ -23,7 +23,7 @@
             min-height: 100vh;
         }
         
-        /* Lluvia Matrix - Siempre en el fondo (Z-INDEX 0) */
+        /* Lluvia Matrix - Siempre en el fondo */
         #matrix-canvas {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             z-index: 0; 
@@ -33,16 +33,18 @@
 
         /* Contenedores principales sobre la matrix */
         .main-container { position: relative; z-index: 10; }
+        /* Protocolo Modal - CRÍTICO: Debe estar por encima de todo */
         #preloader, #rules-modal { z-index: 9999; }
+        #rules-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: rgba(0, 0, 0, 0.9); display: none; align-items: center; justify-content: center; } 
         
-        /* Efecto CRT: Líneas de barrido */
+        /* Efecto CRT */
         body::after {
             content: ''; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: repeating-linear-gradient(0deg, rgba(0, 0, 0, 0.15) 1px, transparent 3px);
             pointer-events: none; z-index: 1000;
         }
 
-        /* 2. ESTÉTICA HACKER: GLITCH, UI */
+        /* 2. ESTÉTICA HACKER */
         @keyframes glitch {
             0%, 100% { text-shadow: -1px -1px 0 #F0F, 1px 1px 0 #0FF; opacity: 1; }
             50% { text-shadow: 1px -1px 0 #F0F, -1px 1px 0 #0FF; }
@@ -51,32 +53,11 @@
 
         .hacker-box { border: 1px solid #0F0; background-color: rgba(0, 10, 0, 0.7); box-shadow: 0 0 10px #0F0 inset; border-radius: 0; }
         .hacker-input, .hacker-textarea { background-color: #010; border: 1px solid #0A0; color: #0F0; border-radius: 0; outline: none; }
-        .hacker-input:focus, .hacker-textarea:focus { box-shadow: 0 0 15px #0F0; border-color: #0F0; }
         .hacker-btn { background-color: transparent; border: 1px solid #0F0; color: #0F0; transition: all 0.3s; border-radius: 0; }
         .hacker-btn:hover:not(:disabled) { background-color: #0F0; color: #000; box-shadow: 0 0 15px #0F0; }
         .hacker-btn:disabled { opacity: 0.5; cursor: not-allowed; }
         
-        /* 3. PRELOADER */
-        #preloader { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: #000; display: flex; align-items: center; justify-content: center; transition: opacity 0.5s; }
-        .preloader-content { 
-            border: 3px solid #F0F; 
-            box-shadow: 0 0 30px #F0F; 
-            padding: 30px; 
-            background: rgba(0, 0, 0, 0.9); 
-            width: 90%; max-width: 650px;
-        }
-        .loading-line { overflow: hidden; white-space: nowrap; font-size: 1rem; margin-top: 8px; }
-        
-        /* Animación de Simulación de Carga (Más estable que typewriter) */
-        .loading-line span { 
-            display: inline-block;
-            opacity: 0;
-            animation: fadeInStep 0.1s forwards;
-            animation-timing-function: step-start;
-        }
-        @keyframes fadeInStep { 0% { opacity: 0; } 100% { opacity: 1; } }
-
-        /* 4. LOGS LATERALES (Ajuste de estilo) */
+        /* 3. LOGS LATERALES */
         .scrolling-log {
             max-height: 80vh; 
             overflow: hidden;
@@ -91,16 +72,10 @@
             to { transform: translateY(-100%); }
         }
 
-        /* 5. PAGINACIÓN HACKER */
+        /* 4. PAGINACIÓN */
         .pagination-container {
             display: flex; justify-content: center; align-items: center; gap: 8px; margin-top: 20px;
             border-top: 1px dashed #0A0; padding-top: 10px;
-        }
-        .pagination-btn {
-            padding: 4px 8px; font-size: 14px; line-height: 1;
-        }
-        .pagination-btn.active {
-            background-color: #0F0; color: #000; border-color: #0F0; box-shadow: 0 0 8px #0F0;
         }
     </style>
 </head>
@@ -110,9 +85,9 @@
 
     <div id="preloader">
         <div class="preloader-content">
-            <h1 class="text-3xl text-darkweb mb-6 font-bold">[ INITIATING DARKNET PROTOCOL v5.2 ]</h1>
+            <h1 class="text-3xl text-darkweb mb-6 font-bold">[ INITIATING DARKNET PROTOCOL v6.0 ]</h1>
             <div id="loading-terminal">
-                <p class="loading-line text-darkweb"><span>[>>] $</span> <span>curl</span> <span>-s</span> <span>-k</span> <span>--proxy</span> <span>socks5://127.0.0.1:9050</span> <span>http://leviathan.onion/api/v5</span></p>
+                <p class="loading-line text-darkweb"><span>[>>] $</span> <span>curl</span> <span>-s</span> <span>-k</span> <span>--proxy</span> <span>socks5://127.0.0.1:9050</span> <span>http://leviathan.onion/api/v6</span></p>
                 <p class="loading-line text-warning" style="animation-delay: 2.5s;"><span>[TOR]</span> <span>Establishing</span> <span>6-hop</span> <span>circuit:</span> <span>DE->RU->CN->CH->MX->??.</span></p>
                 <p class="loading-line text-error" style="animation-delay: 5s;"><span>[ERROR]</span> <span>Security</span> <span>check</span> <span>failed:</span> <span>CLIENT_HEADERS_LEAK.</span> <span>Running</span> <span>cleanup...</span></p>
                 <p class="loading-line text-success" style="animation-delay: 7.5s;"><span>[FIREBASE]</span> <span>Secure</span> <span>Tunnel</span> <span>established</span> <span>via</span> <span>NoSQL</span> <span>bridge.</span></p>
@@ -123,11 +98,11 @@
 
     <div id="rules-modal">
         <div class="hacker-box max-w-lg w-full relative p-6 border-red-500 shadow-red-500">
-            <h2 class="text-2xl text-red-500 mb-6 font-bold">[ ! PROTOCOLO DE CONEXIÓN: SEVERO (V5.2) ! ]</h2>
+            <h2 class="text-2xl text-red-500 mb-6 font-bold">[ ! PROTOCOLO DE CONEXIÓN: SEVERO (V6.0) ! ]</h2>
             <ul class="list-disc list-inside space-y-3 text-sm">
                 <li><span class="text-red-400">R1: ANONIMATO CRÍTICO.</span> **NUNCA** publicar información personal o de terceros. La violación anula el ID de operador permanentemente.</li>
-                <li><span class="text-red-400">R2: ESTABILIDAD Y RESPUESTAS.</span> El sistema de respuestas está bajo monitoreo constante. Se ruega moderación para no generar problemas de latencia/contadores.</li>
-                <li><span class="text-red-400">R3: PAGINACIÓN.</span> La base de datos aplica paginación forzosa: **20 respuestas por página**. Los hilos inactivos son purgados automáticamente.</li>
+                <li><span class="text-red-400">R2: ESTABILIDAD Y RESPUESTAS.</span> El sistema de respuestas está bajo monitoreo constante. **Error 500 corregido**.</li>
+                <li><span class="text-red-400">R3: PAGINACIÓN.</span> La base de datos aplica paginación forzosa: **20 respuestas por página**. </li>
                 <li><span class="text-red-400">R4: EXONERACIÓN.</span> El host `LEVIATHAM.onion` es un transmisor pasivo. El operador es responsable de su cifrado y de las consecuencias.</li>
             </ul>
             <button id="close-rules-btn" class="hacker-btn mt-8 w-full text-red-500 border-red-500 hover:bg-red-500">INIT: ACKNOWLEDGE (Aceptar Protocolo)</button>
@@ -159,7 +134,7 @@
                     | | |
                     \_/
                       
-[ Status: Encrypted | Mode: STABLE]
+[ Status: Encrypted | Mode: FINAL]
 [ Darknet Node: 0x513FA ]
                     </pre>
                     <div class="flex justify-center gap-4 mt-4 text-sm">
