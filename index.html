@@ -1,67 +1,83 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-
-    <div id="admin-tools" class="forum-box admin-panel">
-        <h2>> Herramientas de Administrador (DEBUG)</h2>
-        <input type="password" id="admin-key-input" placeholder="Ingresa la Clave de Administrador...">
-        <button onclick="toggleAdminMode()" id="admin-toggle-button">ACTIVAR MODO</button>
-        
-        <div id="admin-controls-status" style="display: none;">
-            <p style="color: red;">[!] MODO ADMINISTRADOR ACTIVO [!]</p>
-            <input type="text" id="thread-id-to-delete" placeholder="ID del Hilo a Borrar">
-            <button onclick="deletePost('thread')" class="delete-button">BORRAR HILO POR ID</button>
-            <input type="text" id="reply-id-to-delete" placeholder="ID de la Respuesta a Borrar">
-            <input type="text" id="parent-thread-id" placeholder="ID del Hilo Padre">
-            <button onclick="deletePost('reply')" class="delete-button">BORRAR RESPUESTA POR ID</button>
-        </div>
-    </div>
-    
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>LEVIATHAM - Foro Anónimo</title>
+    <title>~/.config/LEVIATHAM.conf - Terminal Cifrada</title>
     <link rel="stylesheet" href="style.css">
     
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-firestore-compat.js"></script>
 </head>
 <body>
-    <div class="monitor-frame">
-        <header class="scanline">
-            <pre class="logo">
-[ Iniciando Codificación ]
-            
-              .'.. /|
-             / |  //
-           _.'./.'./
-          ( LEVIATHAM )
-           \_`\_`\_/
-             / / /
-            | | |
-            \_/
-            
-[ Status: Online ]
-[ Industrias Lazarus ]
-              [ KaliHunter32 ]</pre>
-        </header>
+    <div id="preloader">
+        <div id="terminal-screen">
+            <p>> [INIT] Booting LEVIATHAM secure module...</p>
+            <p>> [STATUS] Checking kernel integrity... **OK**</p>
+            <p>> [AUTH] Bypassing primary access controls...</p>
+            <p>> [NETWORK] Establishing TOR circuit 0x01...</p>
+            <p class="blink">> connection established. running 'forum_interface.sh'</p>
+        </div>
+    </div>
+    
+    <div id="content-wrapper" class="hidden">
+        <div class="monitor-frame">
+            <header class="glitch-text" id="main-header">
+                <pre class="logo">
+                [ Iniciando Codificación ]
+                
+                      .'.. /|
+                     / |  //
+                   _.'./.'./
+                  ( LEVIATHAM )
+                   \_`\_`\_/
+                     / / /
+                    | | |
+                    \_/
+                
+                [ Status: Online ]
+                [ Industrias Lazarus ]
+                      [ KaliHunter32 ]</pre>
+            </header>
 
-        <main id="forum-container">
-            <div id="new-thread-form" class="forum-box">
-                <h2>> Nueva Transmisión Anónima</h2>
-                <input type="text" id="thread-author" placeholder="Alias (Opcional, 'Anon' por defecto)">
-                <textarea id="thread-content" placeholder="Escribe tu mensaje o hilo aquí..."></textarea>
-                <button onclick="publishThread()">ENVIAR (ACK)</button>
-            </div>
+            <main id="forum-container">
+                <div id="thread-list-view">
+                    <div id="new-thread-form" class="forum-box">
+                        <h2>> Escribir Transmisión (Anon)</h2>
+                        <input type="text" id="thread-author" placeholder="Alias (Opcional, 'Anonimo' por defecto)">
+                        <textarea id="thread-content" placeholder="Escribe tu mensaje/hilo cifrado aquí..."></textarea>
+                        <button onclick="publishThread()">ENVIAR_DATOS (ACK)</button>
+                    </div>
 
-            <div id="threads-list" class="forum-box">
-                <h2>> Hilos de Datos Cifrados:</h2>
+                    <div id="threads-list" class="forum-box">
+                        <h2>> $ ls -l /data/threads</h2>
+                        </div>
                 </div>
-        </main>
+
+                <div id="thread-detail-view" style="display: none;">
+                    <button onclick="showListView()" class="back-button">< Volver a $ cd ..</button>
+                    
+                    <div id="current-thread-content" class="forum-box">
+                        </div>
+
+                    <div id="reply-form" class="forum-box">
+                        <h2>> $ echo "Respuesta a Transmisión" >></h2>
+                        <input type="text" id="reply-author" placeholder="Alias (Opcional, 'Anonimo' por defecto)">
+                        <textarea id="reply-content" placeholder="Escribe tu respuesta aquí..."></textarea>
+                        <button id="reply-button">EJECUTAR (POST)</button>
+                    </div>
+
+                    <div id="replies-list" class="forum-box">
+                        <h2>> $ cat /data/replies</h2>
+                        </div>
+                </div>
+            </main>
+            
+            <div id="shadow-brooks-logo"></div> </div>
         
         <div id="matrix-overlay"></div>
     </div>
     
     <script src="script.js"></script>
 </body>
-
 </html>
