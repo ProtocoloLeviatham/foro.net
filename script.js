@@ -13,6 +13,7 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const threadsCollection = db.collection("threads");
 
+// Intentar habilitar la persistencia de datos (guardado local)
 db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
     if (err.code !== 'failed-precondition' && err.code !== 'unimplemented') {
         console.warn("WARN: Persistencia de Firebase fallida:", err);
@@ -22,7 +23,7 @@ db.enablePersistence({ synchronizeTabs: true }).catch((err) => {
 // Referencias a elementos de la UI
 const preloader = document.getElementById('preloader');
 const contentWrapper = document.getElementById('content-wrapper');
-const rulesModal = document.getElementById('rules-modal'); // CRÍTICO: El modal de reglas
+const rulesModal = document.getElementById('rules-modal');
 const postsContainer = document.getElementById('posts-container');
 const repliesContainer = document.getElementById('replies-container');
 const matrixCanvas = document.getElementById('matrix-canvas');
@@ -32,7 +33,8 @@ const paginationControls = document.getElementById('pagination-controls');
 const REPLIES_PER_PAGE = 20; 
 let currentThreadId = null;
 let currentThreadData = null;
-let repliesHistory = {}; // Clave: threadId. Valor: { currentPage: 1, cursors: [null, lastDoc1, lastDoc2, ...] }
+// Almacena el cursor de cada página para permitir la navegación hacia atrás
+let repliesHistory = {}; // Clave: threadId. Valor: { currentPage: 1, cursors: [null, lastDocPage1, lastDocPage2, ...] }
 
 // -----------------------------------------------------
 // 01. UTILIDADES Y GESTIÓN DE VISTAS
@@ -57,54 +59,14 @@ function showDetailView() {
     document.getElementById('thread-detail-view').style.display = 'block';
 }
 
-// Implementación de Matrix y Logs (Mantenidas y estables)
-// (Las funciones initMatrixEffect y generateRandomLog se mantendrían aquí)
-// (La función initPreloader se mantendría aquí)
-
-
 // -----------------------------------------------------
-// 02. GESTIÓN DE HILOS Y COMENTARIOS
+// 02. LÓGICA DE COMENTARIOS Y TRANSACCIONES
 // -----------------------------------------------------
 
-// --- Publicar Hilo (Thread) ---
-function publishThread() {
-    const authorInput = document.getElementById('thread-author');
-    const contentInput = document.getElementById('thread-content');
-    const submitThreadBtn = document.getElementById('submit-thread-btn');
-
-    const author = authorInput.value.trim() || 'Anonimo Cifrado'; 
-    const content = contentInput.value.trim();
-
-    if (content.length < 15 || content.length > 500) {
-        alert("ERROR: El hilo debe tener entre 15 y 500 caracteres.");
-        return;
-    }
-
-    submitThreadBtn.disabled = true;
-    submitThreadBtn.textContent = "TRANSMITIENDO...";
-    
-    threadsCollection.add({
-        author: author,
-        content: content,
-        timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        replyCount: 0,
-    })
-    .then(() => {
-        contentInput.value = ''; 
-        authorInput.value = '';
-        alert("Transmisión Enviada [ACK/200]");
-    })
-    .catch((error) => {
-        console.error("> ERROR DE ESCRITURA:", error);
-        alert("ERROR: Fallo de escritura. [Code: 503]");
-    })
-    .finally(() => {
-        submitThreadBtn.disabled = false;
-        submitThreadBtn.textContent = "EXECUTE (INIT)";
-    });
-}
-
-// --- Publicar Respuesta (Comentario) con Transacción ---
+/**
+ * Función CRÍTICA: Publica la respuesta y actualiza el contador en una transacción.
+ * El uso de la transacción (db.runTransaction) previene el ERROR 500 si las reglas son correctas.
+ */
 function publishReply(threadId) {
     const authorInput = document.getElementById('reply-author');
     const contentInput = document.getElementById('reply-content');
@@ -123,7 +85,7 @@ function publishReply(threadId) {
 
     const repliesCollection = threadsCollection.doc(threadId).collection('replies');
     
-    // USAMOS TRANSACCIÓN: Asegura que la respuesta se guarda Y el contador se actualiza.
+    // TRANSACCIÓN DEFINITIVA
     db.runTransaction((transaction) => {
         // 1. Añadir la respuesta
         transaction.set(repliesCollection.doc(), {
@@ -132,7 +94,7 @@ function publishReply(threadId) {
             timestamp: firebase.firestore.FieldValue.serverTimestamp()
         });
         
-        // 2. Incrementar el contador del hilo padre (Validado por las Reglas de Seguridad)
+        // 2. Incrementar el contador del hilo padre
         const threadRef = threadsCollection.doc(threadId);
         transaction.update(threadRef, {
             replyCount: firebase.firestore.FieldValue.increment(1)
@@ -141,18 +103,24 @@ function publishReply(threadId) {
         return Promise.resolve(); 
     })
     .then(() => {
+        // ÉXITO
         contentInput.value = ''; 
         authorInput.value = '';
         alert("Respuesta Enviada [ACK/200]");
         
-        // CORRECCIÓN CLAVE: Al comentar, vamos a la ÚLTIMA página para ver el nuevo comentario.
-        const totalReplies = currentThreadData.replyCount + 1; // El nuevo total
+        // Mover a la última página para ver el nuevo comentario
+        const totalReplies = (currentThreadData.replyCount || 0) + 1;
+        currentThreadData.replyCount = totalReplies; // Actualizar localmente el contador
         const newPage = Math.ceil(totalReplies / REPLIES_PER_PAGE);
+        
+        // Resetear cursores ya que el total de comentarios cambió
+        repliesHistory[threadId] = { currentPage: newPage, cursors: [null] };
         loadReplies(threadId, newPage); 
     })
     .catch((error) => {
-        console.error("> ERROR AL PUBLICAR RESPUESTA (TRANSACCIÓN):", error);
-        alert("ERROR CRÍTICO: Fallo al registrar respuesta. [Code: 500]");
+        // FRACASO: Este es el punto que estaba fallando
+        console.error("ERROR CRÍTICO EN TRANSACCIÓN:", error);
+        alert("ERROR CRÍTICO: Fallo al registrar respuesta. [Code: 500]. Verifique las Reglas de Seguridad.");
     })
     .finally(() => {
         replyButton.disabled = false;
@@ -160,98 +128,7 @@ function publishReply(threadId) {
     });
 }
 
-// --- Listar Hilos (Mantenida) ---
-function loadThreads() {
-    postsContainer.innerHTML = '<p class="text-gray-600">Buscando Hilos de Datos...</p>';
-
-    threadsCollection.orderBy('timestamp', 'desc').onSnapshot({ includeMetadataChanges: true }, (snapshot) => {
-        
-        if (snapshot.metadata.fromCache && !snapshot.metadata.hasPendingWrites) {
-             console.warn("WARN: Modo sin conexión. Mostrando datos de caché.");
-        }
-
-        postsContainer.innerHTML = '';
-        
-        snapshot.forEach((doc) => {
-            const threadData = doc.data();
-            const threadId = doc.id;
-            const timestampStr = formatTimestamp(threadData.timestamp);
-            const replies = threadData.replyCount || 0;
-
-            const threadElement = document.createElement('div');
-            threadElement.className = 'p-3 border border-dashed border-gray-700 hover:border-green-500 transition cursor-pointer';
-            
-            const encodedThreadData = encodeURIComponent(JSON.stringify(threadData));
-
-            threadElement.innerHTML = `
-                <div class="flex justify-between text-sm mb-1">
-                    <span class="text-red-400 font-bold">[ THREAD_ID: ${threadId.substring(0, 6)}... ]</span>
-                    <span class="text-gray-500">${timestampStr}</span>
-                </div>
-                <h3 class="text-white text-md font-bold hover:underline">${threadData.content.substring(0, 100)}${threadData.content.length > 100 ? '...' : ''}</h3>
-                <div class="flex justify-between items-center text-xs mt-2">
-                    <span class="text-green-400">Operador: ${threadData.author}</span>
-                    <span class="text-yellow-400">
-                        <span data-lucide="message-square" class="w-4 h-4 inline-block mr-1"></span> ${replies} RESPUESTAS
-                    </span>
-                </div>
-            `;
-            
-            threadElement.addEventListener('click', () => {
-                displayThread(threadId, JSON.parse(decodeURIComponent(encodedThreadData)));
-            });
-            
-            postsContainer.appendChild(threadElement);
-        });
-        
-        if (snapshot.empty) {
-            postsContainer.innerHTML = '<p class="text-center text-gray-600">-- DIRECTORIO VACÍO. INICIE TRANSMISIÓN --</p>';
-        }
-        lucide.createIcons();
-    }, (error) => {
-        console.error("ERROR CRÍTICO EN ON-SNAPSHOT:", error);
-        postsContainer.innerHTML = `<p class="text-center text-red-500">ERROR CRÍTICO: Fallo de conexión a la Base de Datos. Code: ${error.code || 'UNKNOWN'}. Intente recargar.</p>`;
-    });
-}
-
-// --- Mostrar Detalle de Hilo ---
-function displayThread(threadId, threadData) {
-    showDetailView();
-    currentThreadId = threadId;
-    currentThreadData = threadData; 
-
-    const threadContentDiv = document.getElementById('current-thread-content');
-    const replyButton = document.getElementById('reply-button');
-    const timestampStr = formatTimestamp(threadData.timestamp);
-    const replies = threadData.replyCount || 0;
-
-    threadContentDiv.innerHTML = `
-        <h3 class="text-xl text-red-400 mb-2 font-bold">[ HILO CIFRADO: ${threadId} ]</h3>
-        <p class="mb-4">${threadData.content}</p>
-        <div class="flex justify-between items-center text-xs text-gray-500 mt-4">
-            <span>Operador: ${threadData.author} | Fecha/Hora: ${timestampStr}</span>
-            <span class="text-yellow-400">
-                <span data-lucide="message-square" class="w-4 h-4 inline-block mr-1"></span> REPLIES: ${replies}
-            </span>
-        </div>
-    `;
-
-    replyButton.onclick = () => publishReply(threadId);
-
-    // Inicializar historial de paginación para este hilo
-    if (!repliesHistory[threadId]) {
-        repliesHistory[threadId] = { currentPage: 1, cursors: [null] };
-    }
-    
-    // Cargar la primera página de respuestas
-    loadReplies(threadId, 1);
-    lucide.createIcons();
-}
-
 // --- Cargar Respuestas (Comentarios) con Paginación Robusta ---
-/**
- * Carga los comentarios paginados. La clave es usar el historial de cursores para 'PREV'.
- */
 function loadReplies(threadId, pageNumber = 1) {
     repliesContainer.innerHTML = '<p class="text-gray-600">Buscando Respuestas de Datos...</p>';
     paginationControls.innerHTML = ''; 
@@ -262,7 +139,7 @@ function loadReplies(threadId, pageNumber = 1) {
     const repliesCollection = threadsCollection.doc(threadId).collection('replies');
     let query = repliesCollection.orderBy('timestamp', 'asc').limit(REPLIES_PER_PAGE);
     
-    // Definir el cursor de inicio
+    // Si no es la primera página, usa el cursor almacenado
     const startCursor = threadHistory.cursors[pageNumber - 1] || null;
 
     if (startCursor) {
@@ -272,9 +149,9 @@ function loadReplies(threadId, pageNumber = 1) {
     query.get().then((snapshot) => {
         repliesContainer.innerHTML = '';
         
-        if (snapshot.empty) {
+        if (snapshot.empty && pageNumber === 1) {
             repliesContainer.innerHTML = '<p class="text-center text-gray-600">-- SUB-DIRECTORIO VACÍO --</p>';
-            renderPaginationControls(threadId, 1, 1, 0); // Total de páginas 1, docCount 0
+            renderPaginationControls(threadId, 1, 1, 0); 
             return;
         }
         
@@ -282,9 +159,6 @@ function loadReplies(threadId, pageNumber = 1) {
         const lastDoc = snapshot.docs[snapshot.docs.length - 1];
         if (threadHistory.cursors.length === pageNumber) {
             threadHistory.cursors.push(lastDoc);
-        } else if (threadHistory.cursors.length < pageNumber) {
-            // Error en la lógica de navegación, reseteamos al último cursor conocido
-            threadHistory.cursors[pageNumber] = lastDoc;
         }
 
         // Renderizar comentarios
@@ -310,7 +184,7 @@ function loadReplies(threadId, pageNumber = 1) {
         
     }).catch(error => {
         console.error("Error al cargar respuestas paginadas:", error);
-        repliesContainer.innerHTML = '<p class="text-center text-red-500">ERROR: Fallo al cargar los fragmentos de datos.</p>';
+        repliesContainer.innerHTML = '<p class="text-center text-red-500">ERROR: Fallo al cargar los fragmentos de datos. [Code: 503]</p>';
     });
 }
 
@@ -319,8 +193,7 @@ function renderPaginationControls(threadId, totalPages, currentPage, docsCount) 
     paginationControls.innerHTML = '';
     
     const hasPrev = currentPage > 1;
-    // La paginación hacia adelante es fiable si el número de documentos es igual al límite
-    // o si el total de páginas es mayor que la actual.
+    // Solo hay "next" si el número de documentos es igual al límite O si no es la última página.
     const hasNext = docsCount === REPLIES_PER_PAGE && currentPage < totalPages;
 
     // Botón Anterior
@@ -349,45 +222,133 @@ function renderPaginationControls(threadId, totalPages, currentPage, docsCount) 
 }
 
 // -----------------------------------------------------
-// 03. INICIALIZACIÓN Y PROTOCOLO
+// 03. INICIALIZACIÓN Y FUNCIONES AUXILIARES
 // -----------------------------------------------------
 
+// --- Matrix, Logs, Hilos, Preloader (Mantenidas estables) ---
+
+function publishThread() { /* ... (Misma lógica de la respuesta anterior) ... */ }
+function loadThreads() { /* ... (Misma lógica de la respuesta anterior) ... */ }
+function displayThread(threadId, threadData) { /* ... (Misma lógica de la respuesta anterior) ... */ }
+function initMatrixEffect() { /* ... (Lógica de Matrix Morada de la respuesta anterior) ... */ }
+function generateRandomLog() { /* ... (Lógica de Logs de la respuesta anterior) ... */ }
+function initPreloader() { /* ... (Lógica de Preloader de la respuesta anterior) ... */ }
+
 function initApp() {
-    // Inicialización de utilidades (Logs, Matrix, ID)
+    // Definir ID de Operador
     const userId = localStorage.getItem('user-id') || 'Cipher_' + Math.random().toString(36).substring(2, 8).toUpperCase();
     localStorage.setItem('user-id', userId);
     document.getElementById('user-id-display').textContent = userId;
 
-    initMatrixEffect(); // Asumo que esta y otras funciones auxiliares están definidas
-    generateRandomLog();
+    initMatrixEffect();
+    generateRandomLog(); 
     
-    // CORRECCIÓN CLAVE DEL PROTOCOLO BUGUEADO
+    // CORRECCIÓN DEL PROTOCOLO DE BUG
     document.getElementById('close-rules-btn').addEventListener('click', () => {
-        rulesModal.style.display = 'none'; // Hace que el modal desaparezca
-        contentWrapper.classList.remove('hidden'); // Muestra el contenido principal
-        loadThreads(); // Inicia la carga del foro
+        rulesModal.style.display = 'none'; // Desaparece el modal
+        contentWrapper.classList.remove('hidden'); // Muestra el foro
+        loadThreads(); 
     });
     
     document.getElementById('show-rules-btn').addEventListener('click', () => {
         rulesModal.style.display = 'flex';
     });
     
-    // Iniciar la secuencia de carga
     initPreloader();
     lucide.createIcons();
 }
 
-// Implementación de initPreloader, initMatrixEffect y generateRandomLog (Auxiliares)
-// (Estas funciones se mantienen sin cambios ya que son estables)
-// ... (Aquí iría el código de estas tres funciones auxiliares de la respuesta anterior)
+// --- AUXILIARES (Definiciones para que el código sea ejecutable) ---
+// NOTA: EL CÓDIGO REAL DEBE INCLUIR LAS DEFINICIONES COMPLETAS DE LAS SIGUIENTES FUNCIONES:
 
-// --- AUXILIARES (Para que el código sea completo y ejecutable) ---
-// NOTA: Estas funciones son las mismas que en la respuesta anterior (v5.2)
+function publishThread() {
+    const authorInput = document.getElementById('thread-author');
+    const contentInput = document.getElementById('thread-content');
+    const submitThreadBtn = document.getElementById('submit-thread-btn');
+    const author = authorInput.value.trim() || 'Anonimo Cifrado'; 
+    const content = contentInput.value.trim();
+    if (content.length < 15 || content.length > 500) { alert("ERROR: El hilo debe tener entre 15 y 500 caracteres."); return; }
+    submitThreadBtn.disabled = true;
+    submitThreadBtn.textContent = "TRANSMITIENDO...";
+    threadsCollection.add({ author: author, content: content, timestamp: firebase.firestore.FieldValue.serverTimestamp(), replyCount: 0, })
+    .then(() => { contentInput.value = ''; authorInput.value = ''; alert("Transmisión Enviada [ACK/200]"); })
+    .catch((error) => { console.error("> ERROR DE ESCRITURA:", error); alert("ERROR: Fallo de escritura. [Code: 503]"); })
+    .finally(() => { submitThreadBtn.disabled = false; submitThreadBtn.textContent = "EXECUTE (INIT)"; });
+}
 
-function initMatrixEffect() { /* ... */ }
-function generateRandomLog() { /* ... */ }
+function loadThreads() {
+    postsContainer.innerHTML = '<p class="text-gray-600">Buscando Hilos de Datos...</p>';
+    threadsCollection.orderBy('timestamp', 'desc').onSnapshot({ includeMetadataChanges: true }, (snapshot) => {
+        postsContainer.innerHTML = '';
+        snapshot.forEach((doc) => {
+            const threadData = doc.data();
+            const threadId = doc.id;
+            const timestampStr = formatTimestamp(threadData.timestamp);
+            const replies = threadData.replyCount || 0;
+            const threadElement = document.createElement('div');
+            threadElement.className = 'p-3 border border-dashed border-gray-700 hover:border-green-500 transition cursor-pointer';
+            const encodedThreadData = encodeURIComponent(JSON.stringify(threadData));
+            threadElement.innerHTML = `
+                <div class="flex justify-between text-sm mb-1"><span class="text-red-400 font-bold">[ THREAD_ID: ${threadId.substring(0, 6)}... ]</span><span class="text-gray-500">${timestampStr}</span></div>
+                <h3 class="text-white text-md font-bold hover:underline">${threadData.content.substring(0, 100)}${threadData.content.length > 100 ? '...' : ''}</h3>
+                <div class="flex justify-between items-center text-xs mt-2"><span class="text-green-400">Operador: ${threadData.author}</span><span class="text-yellow-400"><span data-lucide="message-square" class="w-4 h-4 inline-block mr-1"></span> ${replies} RESPUESTAS</span></div>`;
+            threadElement.addEventListener('click', () => { displayThread(threadId, JSON.parse(decodeURIComponent(encodedThreadData))); });
+            postsContainer.appendChild(threadElement);
+        });
+        if (snapshot.empty) { postsContainer.innerHTML = '<p class="text-center text-gray-600">-- DIRECTORIO VACÍO. INICIE TRANSMISIÓN --</p>'; }
+        lucide.createIcons();
+    }, (error) => { postsContainer.innerHTML = `<p class="text-center text-red-500">ERROR CRÍTICO: Fallo de conexión a la Base de Datos. Code: ${error.code || 'UNKNOWN'}. Intente recargar.</p>`; });
+}
+
+function displayThread(threadId, threadData) {
+    showDetailView();
+    currentThreadId = threadId;
+    currentThreadData = threadData; 
+    const threadContentDiv = document.getElementById('current-thread-content');
+    const replyButton = document.getElementById('reply-button');
+    const timestampStr = formatTimestamp(threadData.timestamp);
+    const replies = threadData.replyCount || 0;
+    threadContentDiv.innerHTML = `<h3 class="text-xl text-red-400 mb-2 font-bold">[ HILO CIFRADO: ${threadId} ]</h3><p class="mb-4">${threadData.content}</p><div class="flex justify-between items-center text-xs text-gray-500 mt-4"><span>Operador: ${threadData.author} | Fecha/Hora: ${timestampStr}</span><span class="text-yellow-400"><span data-lucide="message-square" class="w-4 h-4 inline-block mr-1"></span> REPLIES: ${replies}</span></div>`;
+    replyButton.onclick = () => publishReply(threadId);
+    if (!repliesHistory[threadId]) { repliesHistory[threadId] = { currentPage: 1, cursors: [null] }; }
+    const totalReplies = threadData.replyCount || 0;
+    const initialPage = Math.ceil(totalReplies / REPLIES_PER_PAGE) || 1;
+    loadReplies(threadId, initialPage);
+    lucide.createIcons();
+}
+
+function initMatrixEffect() {
+    if (!matrixCanvas) return;
+    const ctx = matrixCanvas.getContext('2d');
+    matrixCanvas.height = window.innerHeight; matrixCanvas.width = window.innerWidth;
+    const chinese = '0123456789ABCDEF!$%^&*#@'; const font_size = 10;
+    const columns = matrixCanvas.width / font_size; const drops = [];
+    for (let x = 0; x < columns; x++) { drops[x] = 1; }
+    function draw() {
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.05)'; ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+        ctx.fillStyle = '#9900FF'; ctx.font = font_size + 'px monospace';
+        for (let i = 0; i < drops.length; i++) {
+            const text = chinese[Math.floor(Math.random() * chinese.length)];
+            ctx.fillText(text, i * font_size, drops[i] * font_size);
+            if (drops[i] * font_size > matrixCanvas.height && Math.random() > 0.975) { drops[i] = 0; } drops[i]++;
+        }
+    }
+    return setInterval(draw, 33);
+}
+
+function generateRandomLog() {
+    const actions = ["[+] TCP/443 ESTABLISHED: 172.16.2.8 -> 51.255.45.10", "[TOR] NEW CIRCUIT: RU->CH->DE. LATENCY HIGH.", "[FIREBASE] PULL /THREADS/ SUCCESS. SIZE 4KB.", "[PROXY] ANONIMITY CHECK: 100% SECURE.", "[NETWORK] PACKET LOSS 0.1% ON NODE 3.", "[$] SQLI ATTEMPT DETECTED: DROP TABLE.", "[INFO] OPERATOR 0x513FA ACTIVITY LOGGED.", "[UPLOAD] COMPRESSION LVL 9 APPLIED.", "[WARNING] SERVER LOAD ABOVE 70%.", "[SUCCESS] DB WRITE: THREAD_ID OK."];
+    const randomLog = () => actions[Math.floor(Math.random() * actions.length)] + ` (${Date.now().toString().slice(-4)})`;
+    const createScrollingContent = (elementId) => {
+        const preElement = document.getElementById(elementId);
+        let content = '';
+        for (let i = 0; i < 150; i++) { content += randomLog() + '\n'; }
+        preElement.textContent = content;
+    };
+    createScrollingContent('log-left'); createScrollingContent('log-right');
+}
+
 function initPreloader() { 
-    // ... (El código de initPreloader para la animación de carga va aquí)
     const lines = [
         { selector: '.loading-line:nth-child(1) span', delay: 0 },
         { selector: '.loading-line:nth-child(2) span', delay: 2500 },
@@ -410,5 +371,4 @@ function initPreloader() {
         }, 500); 
     }, totalAnimationTime);
 }
-
 
