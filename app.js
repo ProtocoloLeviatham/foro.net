@@ -1,8 +1,8 @@
 // === 1. CONFIGURACIÓN DE FIREBASE (¡REEMPLAZA CON TUS DATOS REALES!) ===
 const firebaseConfig = {
-    apiKey: "TU_API_KEY_AQUI", // Clave real de tu proyecto
-    authDomain: "TU_DOMINIO.firebaseapp.com",
-    projectId: "TU-PROJECT-ID-AQUI", // ID de tu proyecto Firebase
+    apiKey: "AIzaSyBZCPk8qp39BoQ99qLfoQlT6pabnqaqinY", // Clave real de tu proyecto
+    authDomain: "foro-513fa.firebaseapp.com",
+    projectId: "foro-513fa", // ID de tu proyecto Firebase
     storageBucket: "...",
     messagingSenderId: "...",
     appId: "..."
@@ -335,3 +335,4 @@ document.addEventListener('DOMContentLoaded', () => {
 
 }); // Fin de DOMContentLoaded
 });
+
