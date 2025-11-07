@@ -1,9 +1,4 @@
-// **IMPORTANTE:** Para el desarrollo de un foro cliente, las keys deben estar
-// en el código. No es posible "esconderlas" de forma segura en el cliente.
-// La seguridad se garantiza con las REGLAS DE SEGURIDAD DE FIREBASE.
-// --- CLAVE ADMINISTRATIVA ---
-const ADMIN_KEY = "Leviathan2025AdminKey"; // CAMBIA ESTA CLAVE POR UNA MUCHO MÁS LARGA Y COMPLEJA
-// ----------------------------
+// --- CONFIGURACIÓN DE FIREBASE ---
 const firebaseConfig = {
     apiKey: "AIzaSyBZCPk8qp39BoQ99qLfoQlT6pabnqaqinY",
     authDomain: "foro-513fa.firebaseapp.com",
@@ -18,7 +13,16 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 const threadsCollection = db.collection("threads");
 
-// Función de utilidad para formatear la fecha
+// Referencias a elementos de la UI
+const threadListView = document.getElementById('thread-list-view');
+const threadDetailView = document.getElementById('thread-detail-view');
+const preloader = document.getElementById('preloader');
+const contentWrapper = document.getElementById('content-wrapper');
+
+// -----------------------------------------------------
+// FUNCIÓN DE UTILIDAD
+// -----------------------------------------------------
+
 function formatTimestamp(timestamp) {
     if (!timestamp) return 'Timestamp no disponible';
     const date = timestamp.toDate();
@@ -31,52 +35,121 @@ function formatTimestamp(timestamp) {
     });
 }
 
-/**
- * Publica un nuevo hilo en Firestore.
- */
+// -----------------------------------------------------
+// GESTIÓN DE VISTAS Y PRELOADER
+// -----------------------------------------------------
+
+/** Muestra la vista detallada del hilo. */
+function showDetailView() {
+    threadListView.style.display = 'none';
+    threadDetailView.style.display = 'block';
+}
+
+/** Muestra la vista principal de hilos. */
+function showListView() {
+    threadDetailView.style.display = 'none';
+    threadListView.style.display = 'block';
+}
+
+/** Gestiona la animación de carga inicial. */
+function initPreloader() {
+    // Calcular el tiempo total de la animación de tipeo (aprox. 7.5s)
+    const animationDuration = 7500; 
+
+    setTimeout(() => {
+        preloader.style.opacity = '0';
+        // Después de la transición (0.5s), ocultar y mostrar el contenido
+        setTimeout(() => {
+            preloader.style.display = 'none';
+            contentWrapper.classList.remove('hidden');
+            loadThreads(); // Iniciar carga de datos
+        }, 500);
+    }, animationDuration);
+}
+
+
+// -----------------------------------------------------
+// PUBLICACIÓN DE HILOS Y RESPUESTAS
+// -----------------------------------------------------
+
 function publishThread() {
     const authorInput = document.getElementById('thread-author');
     const contentInput = document.getElementById('thread-content');
 
-    const author = authorInput.value.trim() || 'Anonimo'; // Por defecto es 'Anonimo'
+    const author = authorInput.value.trim() || 'Anonimo';
     const content = contentInput.value.trim();
 
     if (content.length < 5) {
-        alert("El contenido del hilo es demasiado corto. Mínimo 5 caracteres.");
+        alert("ERROR: Contenido demasiado corto. Mínimo 5 caracteres. [Code: 400]");
         return;
     }
 
-    // Estilo "Hacking": simular una carga/conexión
-    console.log(`> Conectando a [${firebaseConfig.projectId}]...`);
+    console.log(`> Transmitiendo paquete de datos inicial...`);
     
     threadsCollection.add({
         author: author,
         content: content,
         timestamp: firebase.firestore.FieldValue.serverTimestamp(),
-        // Inicializa un contador simple de respuestas (opcional pero útil)
         replyCount: 0 
     })
     .then((docRef) => {
         console.log(`> Transmisión enviada. ID: ${docRef.id}`);
-        authorInput.value = ''; // Limpiar campo de autor
-        contentInput.value = ''; // Limpiar campo de contenido
-        alert("Transmisión Enviada (ACK)");
+        authorInput.value = '';
+        contentInput.value = '';
+        alert("Transmisión Enviada [ACK/200]");
     })
     .catch((error) => {
         console.error("> ERROR DE CONEXIÓN/ESCRITURA:", error);
-        alert("ERROR: No se pudo enviar la transmisión. Revisa la consola o las reglas de Firebase.");
+        alert("ERROR: No se pudo enviar la transmisión. Revisar Reglas de Firewall. [Code: 503]");
     });
 }
 
-/**
- * Escucha en tiempo real los cambios en la colección de hilos y actualiza el DOM.
- */
+
+function publishReply(threadId) {
+    const authorInput = document.getElementById('reply-author');
+    const contentInput = document.getElementById('reply-content');
+
+    const author = authorInput.value.trim() || 'Anonimo';
+    const content = contentInput.value.trim();
+
+    if (content.length < 2) {
+        alert("ERROR: Respuesta demasiado corta. Mínimo 2 caracteres. [Code: 400]");
+        return;
+    }
+
+    const repliesCollection = threadsCollection.doc(threadId).collection('replies');
+    
+    console.log(`> Enviando respuesta a Hilo ${threadId}...`);
+
+    repliesCollection.add({
+        author: author,
+        content: content,
+        timestamp: firebase.firestore.FieldValue.serverTimestamp()
+    })
+    .then(() => {
+        // Incrementa el contador en el documento del hilo principal
+        threadsCollection.doc(threadId).update({
+            replyCount: firebase.firestore.FieldValue.increment(1)
+        });
+        
+        console.log(`> Respuesta enviada. Datos comprometidos.`);
+        contentInput.value = ''; 
+    })
+    .catch((error) => {
+        console.error("> ERROR AL PUBLICAR RESPUESTA:", error);
+        alert("ERROR: Fallo en la transmisión de respuesta. Revisar Reglas de Firebase. [Code: 500]");
+    });
+}
+
+// -----------------------------------------------------
+// CARGA Y LISTADO DE DATOS (REAL-TIME)
+// -----------------------------------------------------
+
 function loadThreads() {
     const threadsList = document.getElementById('threads-list');
 
-    // Escucha en tiempo real, ordenando por fecha de creación descendente
     threadsCollection.orderBy('timestamp', 'desc').onSnapshot((snapshot) => {
-        threadsList.innerHTML = '<h2>> Hilos de Datos Cifrados:</h2>'; // Limpiar lista
+        threadsList.innerHTML = '<h2>> $ ls -l /data/threads</h2>';
         snapshot.forEach((doc) => {
             const threadData = doc.data();
             const threadId = doc.id;
@@ -88,14 +161,13 @@ function loadThreads() {
             const timestampStr = formatTimestamp(threadData.timestamp);
 
             threadElement.innerHTML = `
-                <h3>${threadData.content.substring(0, 80)}${threadData.content.length > 80 ? '...' : ''}</h3>
+                <h3>[${threadId.substring(0, 4)}...] ${threadData.content.substring(0, 80)}${threadData.content.length > 80 ? '...' : ''}</h3>
                 <div class="thread-meta">
-                    [Autor: ${threadData.author}] | [Fecha/Hora: ${timestampStr}] 
+                    [Autor: ${threadData.author}] | [Fecha: ${timestampStr}] 
                     <span class="reply-count">| [Respuestas: ${threadData.replyCount || 0}]</span>
                 </div>
             `;
             
-            // Adjuntar listener para ver respuestas
             threadElement.addEventListener('click', () => {
                 displayThread(threadId, threadData);
             });
@@ -103,112 +175,78 @@ function loadThreads() {
             threadsList.appendChild(threadElement);
         });
         
-        // Si no hay hilos, mostrar un mensaje
         if (snapshot.empty) {
-            threadsList.innerHTML += '<p style="text-align: center;">-- No hay hilos aún. Sé el primero en transmitir --</p>';
+            threadsList.innerHTML += '<p style="text-align: center;">-- DIRECTORIO VACÍO. INICIE TRANSMISIÓN --</p>';
         }
     }, (error) => {
         console.error("Error al escuchar hilos:", error);
-        threadsList.innerHTML = '<h2>> ERROR DE CONEXIÓN. Código: 503</h2>';
+        threadsList.innerHTML = '<h2>> ERROR DE CONEXIÓN. Código: 503 (Servicio no disponible)</h2>';
     });
 }
 
-// Llama a la función para cargar los hilos al iniciar
-window.onload = loadThreads;
-
-// -----------------------------------------------------
-// FUNCIÓN PARA MOSTRAR HILO COMPLETO Y RESPUESTAS (MÁS AVANZADO)
-// -----------------------------------------------------
-
-/**
- * Muestra el contenido completo de un hilo y sus respuestas
- * (Esto requiere una estructura de DOM más avanzada que por brevedad no incluyo,
- * pero es el paso a seguir después de hacer clic en el post).
- *
- * @param {string} threadId - El ID del hilo de Firestore.
- * @param {object} threadData - Los datos del hilo.
- */
 function displayThread(threadId, threadData) {
-    // Implementación:
-    // 1. Mostrar el hilo completo en un modal o en una nueva vista.
-    // 2. Cargar la subcolección `replies` para ese `threadId` (`db.collection("threads").doc(threadId).collection("replies")`).
-    // 3. Mostrar un formulario para que los usuarios puedan añadir una nueva respuesta.
+    showDetailView();
+
+    const threadContentDiv = document.getElementById('current-thread-content');
+    const replyButton = document.getElementById('reply-button');
+    const timestampStr = formatTimestamp(threadData.timestamp);
     
-    alert(`Clic en Hilo ID: ${threadId}\nContenido: ${threadData.content}\n\nPara completar esta funcionalidad (mostrar respuestas y formulario de respuesta), necesitarías crear una nueva sección o modal de UI en el HTML/CSS.`);
-    
-    // Aquí iría el código para cargar las respuestas y el formulario de respuesta...
-    // Ejemplo de cómo cargar respuestas:
-    // db.collection("threads").doc(threadId).collection("replies").orderBy('timestamp', 'asc').get().then(...)
+    // Contenido del hilo principal
+    threadContentDiv.innerHTML = `
+        <div class="main-thread-post">
+            <h3>>> CÓDIGO DE HILO: ${threadId}</h3>
+            <p>${threadData.content}</p>
+            <div class="thread-meta">
+                [Autor: ${threadData.author}] | [Fecha/Hora: ${timestampStr}]
+            </div>
+        </div>
+    `;
 
-    // --- FUNCIONES DE ADMINISTRACIÓN ---
+    // Configurar el botón de respuesta
+    replyButton.onclick = () => publishReply(threadId);
 
-/**
- * Activa/Desactiva las herramientas de borrado tras verificar la clave.
- */
-function toggleAdminMode() {
-    const keyInput = document.getElementById('admin-key-input');
-    const controlsStatus = document.getElementById('admin-controls-status');
-    const adminButton = document.getElementById('admin-toggle-button');
-
-    if (keyInput.type === 'text') { // Si ya está activo, desactivar
-        keyInput.type = 'password';
-        keyInput.value = '';
-        controlsStatus.style.display = 'none';
-        adminButton.textContent = 'ACTIVAR MODO';
-        console.log("> MODO ADMIN DESACTIVADO.");
-        return;
-    }
-
-    if (keyInput.value === ADMIN_KEY) {
-        keyInput.type = 'text'; // Cambia a texto para que el admin pueda ver la clave
-        controlsStatus.style.display = 'block';
-        adminButton.textContent = 'DESACTIVAR MODO';
-        console.log("> MODO ADMIN ACTIVADO CON ÉXITO.");
-    } else {
-        alert("CLAVE DE ACCESO DENEGADA. [Error: AUTH_FAIL]");
-        keyInput.value = '';
-    }
+    // Cargar respuestas
+    loadReplies(threadId);
 }
 
-/**
- * Borra un hilo o una respuesta específica de Firebase.
- * @param {string} type - 'thread' o 'reply'.
- */
-function deletePost(type) {
-    let docRef;
-    let successMessage;
+function loadReplies(threadId) {
+    const repliesList = document.getElementById('replies-list');
+    const repliesCollection = threadsCollection.doc(threadId).collection('replies');
 
-    if (type === 'thread') {
-        const threadId = document.getElementById('thread-id-to-delete').value.trim();
-        if (!threadId) { alert("ERROR: ID de hilo requerido."); return; }
-        docRef = threadsCollection.doc(threadId);
-        successMessage = `Hilo [${threadId}] BORRADO.`;
-
-    } else if (type === 'reply') {
-        const replyId = document.getElementById('reply-id-to-delete').value.trim();
-        const parentThreadId = document.getElementById('parent-thread-id').value.trim();
-        if (!replyId || !parentThreadId) { alert("ERROR: IDs de respuesta e hilo padre requeridos."); return; }
-
-        docRef = threadsCollection.doc(parentThreadId).collection('replies').doc(replyId);
-        successMessage = `Respuesta [${replyId}] del hilo [${parentThreadId}] BORRADA.`;
-
-        // Opcional: Desincrementar el replyCount del hilo padre (si el borrado es exitoso)
-    }
-
-    if (docRef) {
-        docRef.delete().then(() => {
-            alert(successMessage + " REINICIANDO CONEXIÓN.");
-            console.warn(`> ${successMessage}`);
-            // Limpiar campos y forzar una recarga visual
-            document.getElementById('thread-id-to-delete').value = '';
-            document.getElementById('reply-id-to-delete').value = '';
-            document.getElementById('parent-thread-id').value = '';
-            showListView(); // Vuelve a la vista de lista
-        }).catch((error) => {
-            console.error("ERROR AL BORRAR DOCUMENTO: ", error);
-            alert("ERROR: No se pudo borrar el post. Revisa los IDs y las reglas de Firebase.");
+    repliesList.innerHTML = '<h2>> $ cat /data/replies (Cargando...)</h2>';
+    
+    // Escucha en tiempo real, ordenando por fecha de creación ascendente
+    repliesCollection.orderBy('timestamp', 'asc').onSnapshot((snapshot) => {
+        repliesList.innerHTML = '<h2>> $ cat /data/replies</h2>';
+        
+        snapshot.forEach((doc) => {
+            const replyData = doc.data();
+            const timestampStr = formatTimestamp(replyData.timestamp);
+            
+            const replyElement = document.createElement('div');
+            replyElement.className = 'reply-post';
+            replyElement.innerHTML = `
+                <div class="thread-meta">
+                    > Transmisión de ${replyData.author} [${timestampStr}]
+                </div>
+                <p>${replyData.content}</p>
+            `;
+            
+            repliesList.appendChild(replyElement);
         });
-    }
-}
+
+        if (snapshot.empty) {
+            repliesList.innerHTML += '<p style="text-align: center;">-- SUB-DIRECTORIO VACÍO. INICIE DIÁLOGO --</p>';
+        }
+
+    }, (error) => {
+        console.error("Error al escuchar respuestas:", error);
+        repliesList.innerHTML = '<h2>> ERROR DE LECTURA. Fallo de integridad de datos.</h2>';
+    });
 }
 
+
+// -----------------------------------------------------
+// INICIO
+// -----------------------------------------------------
+window.onload = initPreloader;
