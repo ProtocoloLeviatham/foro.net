@@ -15,7 +15,7 @@ body {
 }
 
 /* ------------------------------------- */
-/* EFECTO MATRIX (MOVIMIENTO/ANIMACIÓN) */
+/* EFECTO DE CÓDIGO MATRIX Y SCANLINE MÁS INTENSO */
 /* ------------------------------------- */
 
 #matrix-overlay {
@@ -25,18 +25,63 @@ body {
     width: 100%;
     height: 100%;
     z-index: -1;
-    background: repeating-linear-gradient(
-        transparent, 
-        transparent 1px, 
-        rgba(0, 255, 65, 0.05) 1.5px, 
-        transparent 2px
-    );
-    animation: background-move 60s linear infinite;
+    /* Efecto combinado: Lluvia de código (matrix) y línea de escaneo */
+    background: 
+        /* Líneas de escaneo horizontales */
+        repeating-linear-gradient(
+            transparent, 
+            transparent 1px, 
+            rgba(0, 255, 65, 0.08) 1.5px, 
+            transparent 2px
+        ),
+        /* Puntos de código aleatorios y animados */
+        url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="100" height="100"><filter id="noise"><feTurbulence baseFrequency="0.9" numOctaves="3" stitchTiles="stitch"/><feColorMatrix type="saturate" values="0"/></filter><rect width="100%" height="100%" filter="url(#noise)" opacity="0.1"/></svg>');
+    
+    background-size: 100% 2px, 200px 200px;
+    animation: background-move 40s linear infinite, code-flicker 10s steps(10) infinite;
 }
 
 @keyframes background-move {
     from { background-position: 0 0; }
     to { background-position: 0 1000px; }
+}
+
+@keyframes code-flicker {
+    0% { background-position-x: 0; }
+    100% { background-position-x: 1000px; }
+}
+
+/* ------------------------------------- */
+/* EFECTO DE GLITCH (FALLO) EN TEXTO PRINCIPAL */
+/* ------------------------------------- */
+.logo, h2, .main-thread-post h3 {
+    position: relative;
+    /* Animación de glitch sutil */
+    animation: glitch-anim 5s infinite linear alternate; 
+    text-shadow: 0 0 5px var(--color-accent), 0 0 20px rgba(0, 255, 65, 0.5);
+}
+
+@keyframes glitch-anim {
+    0% { transform: translate(0); text-shadow: 0 0 5px var(--color-accent); }
+    20% { transform: translate(-2px, 2px); }
+    40% { transform: translate(-3px, -3px); text-shadow: 0 0 8px red; }
+    60% { transform: translate(3px, 3px); }
+    80% { transform: translate(1px, -1px); }
+    100% { transform: translate(0); text-shadow: 0 0 5px var(--color-accent); }
+}
+
+/* Efecto de sombra parpadeante en el marco */
+.monitor-frame {
+    /* ... (resto de estilos existentes) ... */
+    animation: flicker 1s infinite alternate;
+}
+
+@keyframes flicker {
+    0% { box-shadow: 0 0 20px var(--color-accent), inset 0 0 20px var(--color-accent); opacity: 1; }
+    90% { box-shadow: 0 0 20px var(--color-accent), inset 0 0 20px var(--color-accent); opacity: 1; }
+    92% { box-shadow: 0 0 25px red, inset 0 0 25px red; opacity: 0.95; } /* Flash rojo */
+    95% { box-shadow: 0 0 15px var(--color-accent), inset 0 0 15px var(--color-accent); opacity: 1; }
+    100% { box-shadow: 0 0 20px var(--color-accent), inset 0 0 20px var(--color-accent); opacity: 1; }
 }
 
 /* ------------------------------------- */
@@ -156,3 +201,4 @@ button:hover {
     background-color: darkred;
     box-shadow: 0 0 10px red;
 }
+
